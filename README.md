@@ -21,10 +21,10 @@
 | --- | --- |
 | 公共镜像 | **还没有**。本仓库不发布 Docker 镜像。应用镜像用 `docker compose build` 自建；**Worker 与微信中转镜像由 compose 直接从两个公开仓库的固定提交构建**（git build context），不需要镜像仓库账号，也不用手工 `docker build`。 |
 | Worker 镜像 | npm 包 `@akairos/pipeline` **不含 `services/` 目录**，只装 npm 包无法启动 Worker。compose 用 `services/cloud-worker/Dockerfile` 从 Pipeline 仓库的固定提交构建；已经自建好镜像时可用 `PIPELINE_WORKER_IMAGE` 覆盖。 |
-| 微信中转 | 默认**随栈一起起**（模式 A），compose 用公开仓库 `bun-wx-server` 的固定提交构建并运行它；也可以指向你自己的中转（模式 B）。但该中转当前只实现 **3 个**微信端点（`cgi-bin/token`、`material/add_material`、`draft/add`），而 Pipeline 需要 **7 个**（另需 `draft/update`、`draft/get`、`draft/delete`、`draft/batchget`）。**缺 `draft/update` 等写回端点，也未实现 `Idempotency-Key` 去重**，因此「改稿后覆盖同一篇草稿」和「重复提交去重」当前不可靠。 |
+| 微信中转 | 默认**随栈一起起**（模式 A），compose 用公开仓库 `bun-wx-server` 的固定提交构建并运行它；也可以指向你自己的中转（模式 B）。该中转已实现 Pipeline 需要的全部 **7 个**微信端点（`cgi-bin/token`、`material/add_material`、`draft/add`、`draft/update`、`draft/get`、`draft/delete`、`draft/batchget`），并支持 `Idempotency-Key` 幂等去重（按调用方隔离，默认保留 24 小时）——「改稿后覆盖同一篇草稿」与「重复提交不产生重复草稿」都可用。 |
 | 正文图片 | 正文图片依赖对象存储（COS 一类）的图片上传与公开 HTTPS 地址，**不是**开箱即用能力。 |
 | 实例数量 | app 与 Worker 均为**单实例**。Worker 使用本地 JSON 队列，不支持多副本共享数据卷。 |
-| 鉴权 | 默认 **bootstrap 单用户**（一个访问口令）。通用 OIDC 接入尚未提供。 |
+| 鉴权 | 默认 **bootstrap 单用户**（一个访问口令）。**通用 OIDC 可选接入已可用**：填环境变量即可对接任意标准 OIDC 服务（Keycloak / Authentik / Zitadel / Authelia 等），但自助开通成员仍只有 bootstrap 语义，成员需由管理员预先绑定（见「接入统一身份（可选）」）。 |
 | 注册与群发 | 无注册、无群发、无多用户配额管理。 |
 | 分发产物里的默认文案 | 上游编辑器包 `@akairos/myno` 等的默认主题与插件示例里带有**某个具体公众号的名称**。这些名称**曾随本项目的分发产物一起发布**，现在由**构建期通用中性化**清成中性文案（见「分发产物里的默认文案」）。规则写在 `scripts/brand-copy.ts`，上游包升级后必须复核。运行镜像内 `/app/dist` 已 0 命中。 |
 
@@ -211,6 +211,7 @@ compose 只检查「有没有填」；**填了但不合规**由应用启动时�
 | `PUBLISHING_RELAY_PAT`（可选） | 服务统一持有的中转访问令牌 | **需要** |
 | `PUBLISHING_WX_WHITELIST_IP`（可选） | 微信 API 白名单需要的出口公网 IP | **需要** |
 | `PUBLISHING_AUTH_MODE`（可选） | `bootstrap`（默认）或 `oauth` | 需要 |
+| `PUBLISHING_OAUTH_*`（可选） | oauth 模式下的身份源配置：issuer、client id/secret、redirect，以及标准发现或三个显式端点（见「接入统一身份（可选）」） | 需要 |
 | `PUBLISHING_COPY_MODE`（可选） | 客户可见文案形态：`neutral`（默认）/ `hosted` | 需要 |
 | `APP_PORT`（可选） | 宿主端口，默认 `18889` | 需要 |
 | `PIPELINE_WORKER_IMAGE`（可选） | 覆盖 Worker 镜像引用；已自建镜像时填它 | 需要（改镜像要重建容器） |
@@ -230,7 +231,7 @@ compose 只检查「有没有填」；**填了但不合规**由应用启动时�
 - **PAT 的 scope**：PAT 是中转服务的访问令牌，用来代表你调用中转接口。它由中转服务签发，与微信 AppID/AppSecret 是两回事。`bun-wx-server` 的 scope 里 `wx` 对应 `/api/v1/wx/`。
 - **模式 A 怎么拿 PAT**：跑 `bash scripts/relay-init.sh`，它会创建管理员、生成带 `wx` scope 的 PAT 并写回 `.env` 的 `PUBLISHING_RELAY_PAT`。
 - **IP 白名单**：在公众号后台的「API IP 白名单」里，填**你自己中转服务的出口公网 IP**（不是本应用的服务器 IP）。部署配置了 `PUBLISHING_WX_WHITELIST_IP` 时界面会直接显示该值，否则请在连接向导里自行填写。白名单生效有等待期，第一次存入草稿箱时才会真正验证。
-- **中转当前缺什么**：见「当前状态」。在补齐 `draft/update`、`draft/get`、`draft/delete`、`draft/batchget` 与 `Idempotency-Key` 去重之前，「修改后覆盖同一篇草稿」不可靠。
+- **中转覆盖范围**：随栈的中转已实现 Pipeline 需要的全部 7 个微信端点，并支持 `Idempotency-Key` 幂等去重（同一把 PAT 下同 key 的重复请求不会重复写微信，直接返回首次结果；默认保留 24 小时，可用 `WX_IDEMPOTENCY_TTL_SECONDS` 调整）。模式 B 用自己的中转时，请自行确认它实现了同样的契约。
 
 ## 数据、备份与升级
 
@@ -270,9 +271,9 @@ docker compose up -d --build --wait
 
 - **单实例**：app 与 Worker 都不能跑多副本。Worker 是本地 JSON 队列，共享卷多副本会互相覆盖。
 - **同栈中转只在容器网络内可达**：模式 A 的中转不映射宿主端口，只能被同栈的 Worker 通过 `http://relay:3001` 访问。
-- **中转端点不全**：缺 4 个草稿端点与 `Idempotency-Key` 去重（见「当前状态」）。
+- **中转端点覆盖**：随栈中转已实现全部 7 个微信端点并支持 `Idempotency-Key` 去重；模式 B 用自己的中转时，请确认它实现了同样的契约。
 - **正文图片依赖 COS**：带图片正文需要配置对象存储与公开 HTTPS 地址。
-- **仅 bootstrap 模式**：默认单用户访问口令。通用 OIDC、多用户配额与邀请制尚未提供。
+- **默认仍是 bootstrap 单用户**：只有一个访问口令。通用 OIDC **可以接入**（见下节），但多用户配额、邀请制与自助开通成员仍未提供；OIDC 登录的用户需要管理员预先绑定成员。
 - **无注册、无群发**：不提供账号体系，也不提供任何群发能力。
 - **只写草稿箱**：不读取公众号已发布内容，不做数据统计。
 - **分发产物里的默认文案**：上游默认主题的示例品牌由构建期通用中性化清掉，规则在 `scripts/brand-copy.ts`（不写死任何具体名称），升级上游包要复核（见「当前状态」）。
@@ -292,8 +293,51 @@ docker compose up -d --build --wait
 | 存入草稿箱报 401 | 中转 PAT 不对、已过期，或 scope 里没有 `wx`。 |
 | 存入草稿箱报封面字体 hash 不符 | 封面渲染依赖固定的 Noto CJK 字体文件，字节必须与封面合同一致；镜像内已固定安装该字体，自建镜像时请勿改动。 |
 | 提示 IP 白名单未生效 | 微信的白名单生效有等待期，稍等几分钟再试；同时确认填的是**中转服务的出口公网 IP**。 |
-| 草稿箱里出现重复文章 | 中转尚未实现 `Idempotency-Key` 去重。确认草稿箱结果后再决定是否手动清理，**不要重复发布**。 |
+| 草稿箱里出现重复文章 | 中转已按 `Idempotency-Key` 去重：同一把 PAT 下同 key 的重复请求会返回首次结果，不会再写一次微信。出现重复多半是**换了不同的 PAT 或不同部署**，请先确认草稿箱实际结果，**不要重复发布**。 |
 | 连接列表提示「这个连接没有中转访问令牌（PAT）」 | 部署没有统一持有中转令牌，或之前持有过、后来被撤掉了。点「更新密钥」给这个连接补一个 PAT。 |
+
+## 接入统一身份（可选）
+
+**默认仍然是 bootstrap 单用户**：一个访问口令管一个部署。要多人共用一个实例时，可以把登录换成任意标准 OIDC 服务（Keycloak、Authentik、Zitadel、Authelia、Cloudflare Access 等），只要填环境变量即可，不需要改代码。
+
+开启方式是把 `PUBLISHING_AUTH_MODE` 改成 `oauth`，并按下面**三种端点来源**之一配好。端点来源决定了这个实例走哪条登录链路：
+
+| 端点来源 | 什么时候用 | 需要填什么 | 行为 |
+| --- | --- | --- | --- |
+| **标准发现**（推荐） | 你的 IdP 提供 `/.well-known/openid-configuration` | `PUBLISHING_OAUTH_ISSUER` + client id/secret + redirect | 启动时读一次发现文档，取 `authorization_endpoint`／`token_endpoint`／`userinfo_endpoint`。**发现失败就是启动失败**，不会悄悄换到别的端点 |
+| **显式端点** | 你的 IdP 不提供发现文档，或你不想让服务在启动时访问外网 | 上面三个 `*_ENDPOINT` 变量 + client id/secret + redirect | 完全按你填的地址调用，**不发任何发现请求**。三个端点必须写全，缺一个就启动失败 |
+| **既有形态**（默认） | 保持今天的私有授权服务形态 | `PUBLISHING_OAUTH_PORTAL_URL`（固定 `/oauth/authorize`）+ `PUBLISHING_OAUTH_BASE_URL` + client id/secret + redirect | 与改动前完全一致，**现有部署不需要改任何配置** |
+
+Keycloak / Authentik 风格的配置示例（全部用占位地址）：
+
+```dotenv
+PUBLISHING_AUTH_MODE=oauth
+
+# 方式一：标准发现（只填 issuer，端点自动获取）
+PUBLISHING_OAUTH_ISSUER=https://idp.example.com/realms/main
+PUBLISHING_OAUTH_CLIENT_ID=REGISTERED_CLIENT_ID
+PUBLISHING_OAUTH_CLIENT_SECRET=SERVER_ONLY_SECRET
+PUBLISHING_OAUTH_REDIRECT_URI=https://studio.example.com/api/auth/oauth/callback
+
+# 方式二：显式端点（三个都要填；不用时可以整段删掉）
+# PUBLISHING_OAUTH_AUTHORIZATION_ENDPOINT=https://idp.example.com/realms/main/protocol/openid-connect/auth
+# PUBLISHING_OAUTH_TOKEN_ENDPOINT=https://idp.example.com/realms/main/protocol/openid-connect/token
+# PUBLISHING_OAUTH_USERINFO_ENDPOINT=https://idp.example.com/realms/main/protocol/openid-connect/userinfo
+
+# 发现开关：auto（默认，只给 issuer 时用发现）/ 1（强制发现）/ 0（永不访问外网）
+# PUBLISHING_OAUTH_DISCOVERY=auto
+```
+
+要点：
+
+- **issuer 可以带路径**（如 `/realms/main`），但必须是精确受信值：HTTPS（或显式回环 HTTP 用于本地调试），不带 query/fragment，尾部斜杠会被规范化。issuer 带路径时**只允许在标准发现与显式端点两种方式下使用**。
+- **redirect 必须精确等于** `${APP_ORIGIN}/api/auth/oauth/callback`，并且与 IdP 里登记的回调地址一字不差。
+- **端点地址不带 query、fragment 或凭据**，也不能用非回环的明文 HTTP。
+- **令牌交换用标准表单**（`grant_type=authorization_code` 等），**用户信息用 `Authorization: Bearer <access_token>`**。只支持「客户端密钥放在请求体」这一种客户端认证方式；要求 `client_secret_basic` 的 IdP 需要换一种方式接入。
+- **会话策略仍是本项目自己的**：上游令牌最长可到一天，但本产品的登录会话固定 7 天，不随上游令牌变长。
+- **成员要管理员先绑定**：OIDC 登录的用户不会自动成为成员。用受控命令按 `issuer`/`subject` 绑定（`subject` 就是 IdP 的 `sub`，标准 OIDC 里它不一定是 UUID，大小写按原样保留）。`PUBLISHING_SELF_PROVISION` 的会员自动开通是托管部署专属，开源默认关闭。
+
+发现请求只在启动时发生一次；不想让服务启动时依赖外网，就用显式端点，或把 `PUBLISHING_OAUTH_DISCOVERY` 设成 `0`。
 
 ## 部署形态与客户可见文案
 

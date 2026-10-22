@@ -1,0 +1,46 @@
+name: 问题反馈
+description: 部署或使用中遇到的问题
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量写清版本、部署方式与现象；涉及公众号凭据的问题请**不要**贴出 AppSecret、访问令牌或任何密钥。
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      description: 应用版本（例如 0.7.1）与镜像 tag
+      placeholder: 0.7.1
+    validations:
+      required: true
+  - type: input
+    id: deployment
+    attributes:
+      label: 部署方式
+      description: 例如 Docker Compose 自托管、是否有使用外部中转
+      placeholder: Docker Compose 自托管
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 现象
+      description: 你做了什么、期望什么、实际发生什么；请贴相关报错原文
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志
+      description: 相关容器日志（请先删掉其中的密钥、Cookie 与账号信息）
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 排查确认
+      options:
+        - label: 我已确认 `.env` 中必填项都已填写
+        - label: 我已确认 `docker compose ps` 里相关服务是 healthy
+        - label: 我搜索过现有 issue，没有相同问题

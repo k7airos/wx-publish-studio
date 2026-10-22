@@ -1,0 +1,132 @@
+name: Release images
+
+# 打 tag（v*）时构建并发布多架构镜像：
+#   - 应用镜像：来自本仓库
+#   - Worker 镜像：来自公开仓库 k7airos/zzhub-pipeline 的固定提交
+#   - 中转镜像：来自公开仓库 k7airos/bun-wx-server 的固定提交
+# 推送到 GHCR（用仓库自带的 GITHUB_TOKEN，无需额外凭据）；
+# 若仓库设置了 DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 密文，则同时推送到 Docker Hub。
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的版本标签（例如 v0.7.1）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: k7airos
+
+jobs:
+  images:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: app
+            image: wx-publish-studio
+            repository: ""
+            ref: ""
+            context: "."
+            dockerfile: Dockerfile
+          - name: worker
+            image: wx-pipeline-worker
+            repository: k7airos/zzhub-pipeline
+            ref: "4cf5725f35758fa5fada8786cb57cd9960388c7f"
+            context: sources/worker
+            dockerfile: services/cloud-worker/Dockerfile
+          - name: relay
+            image: wx-relay
+            repository: k7airos/bun-wx-server
+            ref: "faa8913e51790506c27c2f8a886c4ec8be583041"
+            context: sources/relay
+            dockerfile: Dockerfile
+    steps:
+      - name: Resolve version
+        id: version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          version="${tag#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository || github.repository }}
+          ref: ${{ matrix.ref || github.sha }}
+          path: ${{ matrix.context }}
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compose image tags
+        id: tags
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          IMAGE: ${{ matrix.image }}
+          GHCR: ${{ env.REGISTRY }}/${{ env.OWNER }}
+          DOCKERHUB: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          tags="$GHCR/$IMAGE:$VERSION" "$GHCR/$IMAGE:latest"
+          if [ -n "$DOCKERHUB" ]; then
+            tags="$tags" "$DOCKERHUB/$IMAGE:$VERSION" "$DOCKERHUB/$IMAGE:latest"
+          fi
+          {
+            echo "list<<EOF"
+            for tag in $tags; do echo "$tag"; done
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          tags: ${{ steps.tags.outputs.list }}
+
+  release:
+    name: GitHub release
+    needs: images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes \
+            --notes-start-tag "$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || echo '')" \
+            || gh release edit "$TAG" --title "$TAG" --generate-notes

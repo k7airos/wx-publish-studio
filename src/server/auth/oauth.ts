@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { Context } from "hono";
-import type { AppConfig, OAuthConfig } from "../config";
+import { oauthProfile, type AppConfig, type OAuthConfig } from "../config";
 import type { Database } from "../db/schema";
 import { issueSession, revokeCookieSession, setSessionCookie, tokenHash } from "./session";
 import { provisionFromLogin } from "./access";
@@ -9,9 +9,12 @@ import { memberAccess } from "../services/owner-limits";
 
 const pendingCookie = "studio_oauth_pending";
 const uuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+// 上游令牌有效期上限：legacy 沿用既有 600 秒；通用 OIDC 放宽到一天。本产品自己的会话有效期不受它影响。
+const legacyMaxTokenLifetime = 600;
+const genericMaxTokenLifetime = 86_400;
 
 // 授权响应有界读取，禁止跳转到其他服务或把原始错误传到浏览器。
-async function oauthJson(url: string, init: RequestInit) {
+async function fetchJson(url: string, init: RequestInit) {
   const response = await fetch(url, { ...init, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(10_000) });
   if (!response.ok || !response.body || Number(response.headers.get("content-length") || 0) > 64 * 1024) throw new Error("OAuth response unavailable");
   const reader = response.body.getReader(); const chunks: Uint8Array[] = []; let length = 0;
@@ -23,7 +26,17 @@ async function oauthJson(url: string, init: RequestInit) {
       chunks.push(item.value);
     }
   } finally { await reader.cancel().catch(() => {}); }
-  const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
+}
+
+// 私有授权服务用 { code, data } 信封；标准 OIDC 直接返回 JSON 对象。
+function unwrapEnvelope(body: Record<string, unknown>): Record<string, unknown> {
+  if (body?.code === 0 && body.data && typeof body.data === "object") return body.data as Record<string, unknown>;
+  return body;
+}
+
+async function oauthJson(url: string, init: RequestInit) {
+  const body = await fetchJson(url, init);
   if (body?.code !== 0 || !body.data || typeof body.data !== "object") throw new Error("Invalid OAuth response");
   return body.data as Record<string, unknown>;
 }
@@ -31,6 +44,9 @@ async function oauthJson(url: string, init: RequestInit) {
 export async function startOAuth(c: Context, sql: Database, config: AppConfig) {
   const oauth = config.oauth;
   if (!oauth) return c.json({ error: "oauth_unavailable" }, 404);
+  const generic = oauthProfile(oauth) === "generic";
+  const authorizationEndpoint = generic ? (oauth.authorizationEndpoint || "") : oauth.portalUrl;
+  if (!authorizationEndpoint) return c.json({ error: "oauth_unavailable" }, 404);
   const state = randomBytes(32).toString("hex"); const browserBinding = randomBytes(32).toString("hex");
   const oldBinding = getCookie(c, pendingCookie);
   await sql.begin(async transaction => {
@@ -40,8 +56,11 @@ export async function startOAuth(c: Context, sql: Database, config: AppConfig) {
       VALUES (${tokenHash(state)},${tokenHash(browserBinding)},${oauth.issuer},${oauth.clientId},${oauth.redirectUri},now() + interval '10 minutes')`;
   });
   setCookie(c, pendingCookie, browserBinding, { httpOnly: true, sameSite: "Lax", secure: config.appOrigin.startsWith("https:"), path: "/api/auth/oauth", maxAge: 600 });
-  const url = new URL(oauth.portalUrl);
-  url.searchParams.set("client_id", oauth.clientId); url.searchParams.set("redirect_uri", oauth.redirectUri); url.searchParams.set("scope", "profile"); url.searchParams.set("state", state);
+  const url = new URL(authorizationEndpoint);
+  url.searchParams.set("client_id", oauth.clientId); url.searchParams.set("redirect_uri", oauth.redirectUri); url.searchParams.set("scope", generic ? "openid profile" : "profile");
+  // 标准 OIDC 要求显式声明 response_type=code；legacy 形态保持今天的跳转参数不变。
+  if (generic) url.searchParams.set("response_type", "code");
+  url.searchParams.set("state", state);
   return c.redirect(url.toString(), 302);
 }
 
@@ -69,11 +88,40 @@ export function profileDisplayName(profile: Record<string, unknown>): string | n
 }
 
 async function exchangeIdentity(oauth: OAuthConfig, code: string) {
+  if (oauthProfile(oauth) === "legacy") return exchangeLegacyIdentity(oauth, code);
+  return exchangeGenericIdentity(oauth, code);
+}
+
+// 既有私有授权服务形态：JSON 请求体、信封响应、userId 作为身份、令牌有效期上限 600 秒。
+async function exchangeLegacyIdentity(oauth: OAuthConfig, code: string) {
   const tokens = await oauthJson(`${oauth.baseUrl}/api/v1/oauth/token`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ grant_type: "authorization_code", code, client_id: oauth.clientId, client_secret: oauth.clientSecret, redirect_uri: oauth.redirectUri }) });
-  if (typeof tokens.access_token !== "string" || !tokens.access_token || tokens.access_token.length > 8192 || tokens.token_type !== "Bearer" || typeof tokens.expires_in !== "number" || !Number.isInteger(tokens.expires_in) || tokens.expires_in <= 0 || tokens.expires_in > 600) throw new Error("Invalid OAuth token");
+  if (typeof tokens.access_token !== "string" || !tokens.access_token || tokens.access_token.length > 8192 || tokens.token_type !== "Bearer" || typeof tokens.expires_in !== "number" || !Number.isInteger(tokens.expires_in) || tokens.expires_in <= 0 || tokens.expires_in > legacyMaxTokenLifetime) throw new Error("Invalid OAuth token");
   const profile = await oauthJson(`${oauth.baseUrl}/api/v1/oauth/userinfo`, { headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: "application/json" } });
   if (typeof profile.userId !== "string" || !uuid.test(profile.userId)) throw new Error("Invalid OAuth subject");
   return { subject: profile.userId.toLowerCase(), entitlement: membershipEntitlement(profile.membership), displayName: profileDisplayName(profile) };
+}
+
+// 标准 OIDC 形态：表单请求体、标准 JSON 响应、sub 作为身份、令牌有效期上限放宽到一天。
+async function exchangeGenericIdentity(oauth: OAuthConfig, code: string) {
+  if (!oauth.tokenEndpoint || !oauth.userinfoEndpoint) throw new Error("OAuth endpoints unavailable");
+  const form = new URLSearchParams({ grant_type: "authorization_code", code, client_id: oauth.clientId, client_secret: oauth.clientSecret, redirect_uri: oauth.redirectUri });
+  const tokens = unwrapEnvelope(await fetchJson(oauth.tokenEndpoint, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, body: form.toString() }));
+  if (typeof tokens.access_token !== "string" || !tokens.access_token || tokens.access_token.length > 8192 || typeof tokens.token_type !== "string" || tokens.token_type.toLowerCase() !== "bearer" || typeof tokens.expires_in !== "number" || !Number.isInteger(tokens.expires_in) || tokens.expires_in <= 0 || tokens.expires_in > genericMaxTokenLifetime) throw new Error("Invalid OAuth token");
+  const profile = unwrapEnvelope(await fetchJson(oauth.userinfoEndpoint, { headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: "application/json" } }));
+  const subject = profile.sub;
+  if (typeof subject !== "string" || !subject.trim() || subject.length > 255 || /[\u0000-\u001f\u007f]/.test(subject)) throw new Error("Invalid OAuth subject");
+  return { subject, entitlement: null, displayName: genericDisplayName(profile) };
+}
+
+/** 标准 OIDC 的显示名：优先 name，其次 preferred_username，再取邮箱 @ 前部分；只作展示。 */
+export function genericDisplayName(profile: Record<string, unknown>): string | null {
+  for (const key of ["name", "preferred_username", "nickname"]) {
+    const value = profile[key];
+    if (typeof value === "string" && value.trim()) return value.trim().slice(0, 80);
+  }
+  const email = profile.email;
+  if (typeof email === "string" && email.includes("@")) return email.split("@")[0]!.trim().slice(0, 80) || null;
+  return null;
 }
 
 // state 在交换前原子消费；失败需重新登录，不重放原 code 或覆盖已有有效会话。

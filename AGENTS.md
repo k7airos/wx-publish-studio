@@ -28,6 +28,7 @@ bun run build   # vite build
 ## 约定
 
 - **新增业务配置用 `PUBLISHING_` 前缀**，不要另起前缀；部署与基础设施变量沿用既有命名（`APP_ORIGIN`、`POSTGRES_PASSWORD`、`DATABASE_URL`、`PIPELINE_WORKER_*`、`TYPESET_*` 等）。必填项与可选项见 `.env.example`。
+- **OAuth 端点来源有三种**：`PUBLISHING_OAUTH_AUTHORIZATION_ENDPOINT`／`TOKEN_ENDPOINT`／`USERINFO_ENDPOINT`（显式端点）、`PUBLISHING_OAUTH_ISSUER` 配 `PUBLISHING_OAUTH_DISCOVERY=1`（标准发现）、以及不配这些变量时的既有形态。**既有形态的行为不得改变**（线上部署不改任何配置），新形态失败时启动即报错，不静默降级到别的端点。
 - **界面文案用中文**，术语与现有产品保持一致。客户可见文案不出现内部术语（修订、快照、Worker、任务号等）。
 - **共用设计令牌来自 npm 包 `@akairos/design`**（`src/web/ui.css` 引入 `family.css`）。强调色、焦点、选中态使用包内的 `--brand`、`--brand-strong`、`--brand-wash`、`--on-brand`，**不要在本仓库重新定义**。工作台保留自己的紧凑黑白中性外观（`--bg`、`--surface`、`--ink`、`--line` 等）。
 - **当前只有浅色主题**。如果以后增加深色主题，给 `<html>` 加 `class="dark"`，中性覆盖写在 `html.dark` 下，并放在引入包之后。

@@ -114,6 +114,6 @@
 | 镜像 | 来源仓库 | 固定提交 | 许可判定 | 需要随附 NOTICE 或署名 |
 | --- | --- | --- | --- | --- |
 | Worker | `k7airos/zzhub-pipeline` | `4cf5725f35758fa5fada8786cb57cd9960388c7f` | 仓库内 `LICENSE` 为 MIT | 需要随附许可文本（许可文本在该镜像的源码仓库内） |
-| 微信中转 | `k7airos/bun-wx-server` | `afec8d961e0eec95cd11cd6bb6368a310f3b4cf4` | **仓库内没有 `LICENSE` 文件**，`package.json` 也没有 `license` 字段，按本文件「判定口径」无法从包内原文确定授权 | 待确认：自托管者使用该镜像前应向上游确认授权条款 |
+| 微信中转 | `k7airos/bun-wx-server` | `faa8913e51790506c27c2f8a886c4ec8be583041` | MIT（仓库内 `LICENSE` 原文，`package.json` 已声明 `"license": "MIT"`，Copyright (c) 2026 Kairos (k7airos)） | 无需随附 NOTICE；引用时保留其 MIT 许可声明即可 |
 
 > 这两个镜像由使用者自己的 Docker 主机在本地构建，不经过任何镜像仓库账号，也不由本项目再分发。

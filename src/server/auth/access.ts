@@ -1,13 +1,26 @@
 import { randomUUID } from "node:crypto";
 import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
-import type { AppConfig } from "../config";
+import { oauthProfile, type AppConfig, type OAuthConfig } from "../config";
 import { OWNER_ID, type Database } from "../db/schema";
 import { tokenHash } from "./session";
 import { lockOwner, memberAccess } from "../services/owner-limits";
 
 export type AppEnv = { Variables: { ownerId: string } };
 const uuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+
+/**
+ * 身份 subject 的形状：legacy 沿用上游私有授权服务的 UUID 形态；
+ * 标准 OIDC 的 sub 是不透明字符串，只做长度与控制字符检查，大小写原样保留。
+ */
+function subjectAccepted(subject: string, oauth: OAuthConfig) {
+  if (typeof subject !== "string" || !subject.trim() || subject.length > 255 || /[\u0000-\u001f\u007f]/.test(subject)) return false;
+  return oauthProfile(oauth) === "legacy" ? uuid.test(subject) : true;
+}
+
+function normalizeSubject(subject: string, oauth: OAuthConfig) {
+  return oauthProfile(oauth) === "legacy" ? subject.toLowerCase() : subject;
+}
 
 export class AccessError extends Error {
   constructor(readonly code: string) { super(code); }
@@ -39,8 +52,8 @@ function operatorLabel(operator: string) {
 // 存量认领只允许受控命令显式绑定固定 owner；登录回调只在开启自动开通且会员有效时为新身份建成员（provisionFromLogin）。
 export async function claimOwner(sql: Database, config: Pick<AppConfig, "oauth">, input: ClaimOwnerInput) {
   operatorLabel(input.operator);
-  if (!input.confirm || input.ownerId !== OWNER_ID || !config.oauth || input.issuer !== config.oauth.issuer || !uuid.test(input.subject)) throw new AccessError("invalid_identity_claim");
-  const subject = input.subject.toLowerCase();
+  if (!input.confirm || input.ownerId !== OWNER_ID || !config.oauth || input.issuer !== config.oauth.issuer || !subjectAccepted(input.subject, config.oauth)) throw new AccessError("invalid_identity_claim");
+  const subject = normalizeSubject(input.subject, config.oauth);
   return sql.begin(async transaction => {
     await transaction`SELECT pg_advisory_xact_lock(82740313)`;
     const [owner] = await transaction`SELECT id FROM owners WHERE id=${input.ownerId} FOR UPDATE`;
@@ -58,8 +71,8 @@ export async function claimOwner(sql: Database, config: Pick<AppConfig, "oauth">
 // 新成员必须由受控命令按固定 issuer/subject 开通，不能从中央角色或邮箱推断。
 export async function addMember(sql: Database, config: Pick<AppConfig, "oauth">, input: Omit<ClaimOwnerInput, "ownerId">) {
   operatorLabel(input.operator);
-  if (!input.confirm || !config.oauth || input.issuer !== config.oauth.issuer || !uuid.test(input.subject)) throw new AccessError("invalid_identity_claim");
-  const subject = input.subject.toLowerCase();
+  if (!input.confirm || !config.oauth || input.issuer !== config.oauth.issuer || !subjectAccepted(input.subject, config.oauth)) throw new AccessError("invalid_identity_claim");
+  const subject = normalizeSubject(input.subject, config.oauth);
   return sql.begin(async transaction => {
     await transaction`SELECT pg_advisory_xact_lock(82740313)`;
     const [existing] = await transaction`SELECT * FROM identities WHERE issuer=${input.issuer} AND subject=${subject}`;

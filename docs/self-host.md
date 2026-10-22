@@ -9,7 +9,7 @@
 - 磁盘留够：首次构建要产出应用镜像（约 1GB）、Worker 镜像（约 2.1GB）与中转镜像（约 250MB），加上构建缓存建议预留 10GB 以上。
 - 如果要发布带图片的正文，还需要对象存储（COS 一类）与公开 HTTPS 地址。
 
-微信中转**默认随栈一起起**（模式 A）：compose 从公开仓库 `bun-wx-server` 的固定提交构建并运行它，不需要自己准备中转服务。也可以用自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约；**该服务当前只实现 3 个微信端点，Pipeline 需要 7 个**，缺口见 README「当前状态」。
+微信中转**默认随栈一起起**（模式 A）：compose 从公开仓库 `bun-wx-server` 的固定提交构建并运行它，不需要自己准备中转服务。也可以用自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约；随栈中转已实现 Pipeline 需要的全部 7 个微信端点并支持 `Idempotency-Key` 幂等去重。
 
 本仓库不发布 Docker 镜像；应用、Worker 与中转三个镜像都由 `docker compose build` 在本机构建。
 
@@ -70,21 +70,42 @@ bootstrap 模式下的所有数据都归属同一个默认 owner（`OWNER_ID` �
 
 ## 鉴权模式
 
-`PUBLISHING_AUTH_MODE` 只接受 `bootstrap` 或 `oauth`，默认 `bootstrap`。bootstrap 模式使用一个访问口令（`BOOTSTRAP_SECRET`），这是当前唯一可用的模式。oauth 模式要求完整配置：
+`PUBLISHING_AUTH_MODE` 只接受 `bootstrap` 或 `oauth`，默认 `bootstrap`。bootstrap 模式使用一个访问口令（`BOOTSTRAP_SECRET`），适合单用户自托管。oauth 模式支持**标准 OIDC**，可以对接任意标准身份源（Keycloak、Authentik、Zitadel、Authelia 等）。
+
+### 三种端点来源
+
+| 端点来源 | 什么时候用 | 需要填什么 | 行为 |
+| --- | --- | --- | --- |
+| 标准发现 | IdP 提供 `/.well-known/openid-configuration` | `PUBLISHING_OAUTH_ISSUER` + client id/secret + redirect | 启动时读一次发现文档。**发现失败就是启动失败**，不静默降级 |
+| 显式端点 | IdP 没有发现文档，或不想让服务启动时访问外网 | 三个 `*_ENDPOINT` + client id/secret + redirect | 按填写的地址调用，不发发现请求；三个端点必须写全 |
+| 既有形态 | 沿用原来的私有授权服务形态 | `PUBLISHING_OAUTH_PORTAL_URL`（固定 `/oauth/authorize`）+ `PUBLISHING_OAUTH_BASE_URL` + client id/secret + redirect | 与改动前完全一致，现有部署不用改配置 |
+
+标准发现与显式端点的配置示例（占位地址）：
 
 ```dotenv
 PUBLISHING_AUTH_MODE=oauth
-PUBLISHING_OAUTH_ISSUER=https://idp.example.com
-PUBLISHING_OAUTH_PORTAL_URL=https://idp.example.com/oauth/authorize
-PUBLISHING_OAUTH_BASE_URL=https://idp.example.com
+PUBLISHING_OAUTH_ISSUER=https://idp.example.com/realms/main
 PUBLISHING_OAUTH_CLIENT_ID=REGISTERED_CLIENT_ID
 PUBLISHING_OAUTH_CLIENT_SECRET=SERVER_ONLY_SECRET
 PUBLISHING_OAUTH_REDIRECT_URI=https://studio.example.com/api/auth/oauth/callback
+# 不想用发现时改成显式端点（三个都要填）：
+# PUBLISHING_OAUTH_AUTHORIZATION_ENDPOINT=https://idp.example.com/realms/main/protocol/openid-connect/auth
+# PUBLISHING_OAUTH_TOKEN_ENDPOINT=https://idp.example.com/realms/main/protocol/openid-connect/token
+# PUBLISHING_OAUTH_USERINFO_ENDPOINT=https://idp.example.com/realms/main/protocol/openid-connect/userinfo
+# 发现开关：auto（默认）/ 1（强制发现）/ 0（永不访问外网）
+# PUBLISHING_OAUTH_DISCOVERY=auto
 ```
 
-issuer/base 必须是精确受信 origin，Portal 固定 `/oauth/authorize` 且无额外 query；redirect 必须严格等于 `${APP_ORIGIN}/api/auth/oauth/callback` 并与注册 client 完全一致。HTTP 仅允许显式 loopback 用于本地／隧道／恢复。所有 URL 来自部署，不信任 Host/X-Forwarded 或调用方 returnTo。secret 只在受控环境文件／secret 中，禁止写 Git 或前端。
+### 约束与限制
 
-**通用 OIDC 尚未完成**：当前实现保留了对特定会员资格服务的假设，开源版以 bootstrap 为默认；接入自己的 IdP 前请先读 `src/server/auth/oauth.ts` 与 `src/server/auth/access.ts`。
+- issuer 可以带路径（如 `/realms/main`），但必须是精确受信值：HTTPS（或显式回环 HTTP 用于本地／隧道／恢复），不带 query/fragment，尾部斜杠会被规范化。issuer 带路径**只允许在标准发现与显式端点下使用**；既有形态仍要求 issuer/base 是无路径的精确 origin。
+- Portal 与三个端点都不带 query、fragment 或凭据；通用形态下 Portal 路径不再固定为 `/oauth/authorize`。
+- redirect 必须严格等于 `${APP_ORIGIN}/api/auth/oauth/callback` 并与注册 client 完全一致。所有 URL 来自部署，不信任 Host/X-Forwarded 或调用方 returnTo。secret 只在受控环境文件／secret 中，禁止写 Git 或前端。
+- 令牌交换用标准表单请求体，用户信息用 `Authorization: Bearer`；只支持「客户端密钥放在请求体」这一种客户端认证方式。
+- 上游令牌最长可到一天，但**本产品自己的会话有效期仍是固定 7 天**，不随上游令牌变长。
+- **自助开通成员仍只有 bootstrap 语义**：`PUBLISHING_SELF_PROVISION` 的会员自动开通是托管部署专属，开源默认关闭。OIDC 登录的用户需要管理员用受控命令按 `issuer`／`subject`（即 IdP 的 `sub`）预先绑定；标准 OIDC 的 `sub` 不一定是 UUID，大小写按原样保留。
+
+代码位置：配置校验在 `src/server/config.ts`（`loadAuthConfig`），标准发现在 `src/server/auth/oidc.ts`，登录链路在 `src/server/auth/oauth.ts`，成员绑定在 `src/server/auth/access.ts`。
 
 ## 部署形态与客户可见文案
 
@@ -130,11 +151,11 @@ Docker app 固定安装 `fonts-noto-cjk=1:20240730+repack1-1`。封面测量前�
 ## 已知限制
 
 - **没有公共镜像**：应用、Worker 与同栈中转三个镜像都由 `docker compose build` 在本机构建；Worker 与中转用 git context 从两个公开仓库的固定提交构建，不需要镜像仓库账号。
-- **中转端点不全**：公开的中转服务只实现 `cgi-bin/token`、`material/add_material`、`draft/add`，缺 `draft/update`、`draft/get`、`draft/delete`、`draft/batchget`，也未实现 `Idempotency-Key` 去重。缺 `draft/update` 时「改稿后覆盖同一篇草稿」不可靠。
+- **中转端点覆盖**：随栈中转已实现 `cgi-bin/token`、`material/add_material`、`draft/add`、`draft/update`、`draft/get`、`draft/delete`、`draft/batchget` 全部 7 个端点，并支持 `Idempotency-Key` 幂等去重（按调用方隔离，默认 24 小时）。模式 B 用自己的中转时需自行保证同样的契约。
+- **仅 bootstrap 鉴权为默认**：无注册、无群发、无多用户配额管理；统一身份（OIDC）可作为可选接入，见 README「接入统一身份（可选）」。
 - **正文图片依赖 COS**：见上一节。
 - **单实例**：app 与 Worker 均单副本。
 - **同栈中转不映射宿主端口**：模式 A 的中转只在 compose 网络内可达（`http://relay:3001`），外部访问需自行反代。
-- **仅 bootstrap 鉴权**：无注册、无群发、无多用户配额管理。
 - **分发产物里的默认文案**：上游编辑器包的默认主题带有示例品牌文案，本项目在构建期按通用规则中性化（规则见 `scripts/brand-copy.ts`，不写死任何具体名称）；上游包升级后需复核。详见 README「当前状态」。
 
 ## 许可

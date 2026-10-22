@@ -16,6 +16,11 @@ services:
       PUBLISHING_OAUTH_CLIENT_ID: ${PUBLISHING_OAUTH_CLIENT_ID:-}
       PUBLISHING_OAUTH_CLIENT_SECRET: ${PUBLISHING_OAUTH_CLIENT_SECRET:-}
       PUBLISHING_OAUTH_REDIRECT_URI: ${PUBLISHING_OAUTH_REDIRECT_URI:-}
+      # 可选：标准 OIDC 的显式端点与发现开关（通用 IdP 用；默认仍是 bootstrap 单用户）。
+      PUBLISHING_OAUTH_AUTHORIZATION_ENDPOINT: ${PUBLISHING_OAUTH_AUTHORIZATION_ENDPOINT:-}
+      PUBLISHING_OAUTH_TOKEN_ENDPOINT: ${PUBLISHING_OAUTH_TOKEN_ENDPOINT:-}
+      PUBLISHING_OAUTH_USERINFO_ENDPOINT: ${PUBLISHING_OAUTH_USERINFO_ENDPOINT:-}
+      PUBLISHING_OAUTH_DISCOVERY: ${PUBLISHING_OAUTH_DISCOVERY:-}
       PUBLISHING_SELF_PROVISION: ${PUBLISHING_SELF_PROVISION:-0}
       # 客户可见文案的部署形态：neutral（默认，开源自托管）/ hosted（线上托管部署的原有文案）。
       PUBLISHING_COPY_MODE: ${PUBLISHING_COPY_MODE:-neutral}
@@ -70,7 +75,7 @@ services:
     # 微信中转：同栈自带（模式 A）或使用外部中转（模式 B）。镜像同样由 compose 从公开仓库的固定提交构建。
     image: ${RELAY_IMAGE:-wx-relay:0.2.2}
     build:
-      context: https://github.com/k7airos/bun-wx-server.git#afec8d961e0eec95cd11cd6bb6368a310f3b4cf4
+      context: https://github.com/k7airos/bun-wx-server.git#faa8913e51790506c27c2f8a886c4ec8be583041
       dockerfile: Dockerfile
     restart: unless-stopped
     # 模式 B（.env 里填了 ZZHUB_WX_BASE_URL）由 .env 的派生变量把副本数置 0，中转不启动。
