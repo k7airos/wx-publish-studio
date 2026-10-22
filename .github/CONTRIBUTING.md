@@ -1,6 +1,6 @@
 # 贡献指南
 
-本仓库面向公开贡献者。**参与本项目即表示同意遵守 [贡献者行为准则](CODE_OF_CONDUCT.md)（如适用）与 [LICENSE](LICENSE)。**
+本仓库面向公开贡献者。**参与本项目即表示同意遵守 [贡献者行为准则](../CODE_OF_CONDUCT.md)（如适用）与 [LICENSE](../LICENSE)。**
 
 ## 上手
 
@@ -43,4 +43,4 @@ bun test --max-concurrency=1 tests
 ## 其它
 
 - 仓库内的 `AGENTS.md` 记录了工程约定，修改本仓库前请先读它。
-- 遇到部署问题请先看 [README](README.md) 的「故障排查」一节。
+- 遇到部署问题请先看 [README](../README.md) 的「故障排查」一节。
