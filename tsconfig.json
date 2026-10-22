@@ -11,5 +11,5 @@
     "allowImportingTsExtensions": true,
     "types": ["bun", "vite/client"]
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["src", "tests", "scripts", "vite.config.ts"]
 }

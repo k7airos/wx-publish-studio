@@ -9,6 +9,7 @@
     "start": "bun run src/server/index.ts",
     "import:production-config": "bun run scripts/import-production-config.ts",
     "build": "vite build",
+    "check:brand": "bun run scripts/check-brand.ts",
     "test": "bun test --max-concurrency=1 tests",
     "check": "tsc --noEmit"
   },
