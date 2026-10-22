@@ -43,7 +43,7 @@
 ## 前置条件
 
 - **服务器**：2 核 4G 起步；需要能运行 Docker 容器与 Chromium（Worker 渲染用）。
-- **Docker 与 Compose**：Docker Engine 24+，`docker compose` v2。
+- **Docker 与 Compose**：Docker Engine 24+，`docker compose` **v2.2 以上**（本项目用到 `--wait`，它从 v2.2.0 才有；不确定就升级到最新版）。
 - **PostgreSQL**：由 Compose 内置（`postgres:16-alpine`，固定 digest）。
 - **一个公众号账号**：具备管理员权限，可扫码登录微信公众平台。
 - **一个微信中转服务**：默认**不需要自己准备**——compose 会从公开仓库的固定提交构建并起一个（第 4 个容器），也可以直接用已发布的公开镜像。也可以用你自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约，下面「当前状态」列出的 **7 个**微信端点都要实现。
@@ -319,6 +319,7 @@ docker compose up -d --build --wait
 | 端口已被占用（`Bind for 127.0.0.1:18889 failed`） | 宿主上这个端口已经有别的进程或另一套栈在跑。改 `.env` 的 `APP_PORT`（例如 `18890`），并把 `APP_ORIGIN` 同步改成同一个端口。 |
 | 首启后改了 `POSTGRES_PASSWORD`，应用连不上库 | 数据库卷里已经用旧密码建好的角色还在。改密码要用数据库自身的口令修改方式，或清掉 `database-data` 卷重来（**会丢数据**）。 |
 | 构建时卡在拉公开仓库 | Worker 与中转镜像从 GitHub 的公开仓库以 git context 构建，检查网络、代理与 DNS。 |
+| `docker compose` 报 `unknown flag: --wait` | Compose 版本太旧（`--wait` 从 v2.2.0 才有）。升级 Compose 后重试；实在升不了就去掉 `--wait`，改用 `docker compose up -d` 再用 `docker compose ps` 自己看健康状态。 |
 | 登录总是失败 | `APP_ORIGIN` 与浏览器地址栏的 origin 必须完全一致（协议、域名、端口）。SSH 隧道换端口后要同步改 `.env` 的 `APP_PORT` 与 `APP_ORIGIN`。 |
 | Worker 镜像拉不到 | 默认就是公开镜像 `ghcr.io/k7airos/wx-pipeline-worker:0.24.0`；拉不动多半是网络问题。也可以用 `PIPELINE_WORKER_IMAGE` 指向自己已构建的镜像，或改走源码构建。 |
 | Worker 起不来 / 一直不健康 | `docker compose logs worker`：先看是不是连不上 `ZZHUB_WX_BASE_URL`，再看中转是否已启动。 |
@@ -413,5 +414,6 @@ bun run test
 
 - **作者微信**：`akairos` —— 部署、接入与使用问题都可以联系。
 - **问题反馈**：请优先提交 issue，附上版本号、部署方式与现象描述。
+- **讨论区**：<https://github.com/k7airos/wx-publish-studio/discussions> —— 安装与配置类问题可以在那里问；开头的「开始之前」贴里有最省事的部署路径。
 - **本项目许可**：见 [LICENSE](LICENSE)（MIT，Copyright (c) 2026 Kairos (k7airos)）。
 - **第三方许可**：见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
