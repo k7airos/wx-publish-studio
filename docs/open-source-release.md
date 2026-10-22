@@ -43,6 +43,7 @@
 ## 后续发版怎么继续
 
 1. 在**公开仓库**上按功能分批提交，一个提交只做一件事，提交信息说明动机。
+   - 提交前先确认用的是 noreply 邮箱（`git config user.email k7airos@users.noreply.github.com`），**不要把个人邮箱带进公开历史**。历史一旦推上去再改写会影响已发布的镜像与 tag，成本远高于提交前确认。
 2. 每次提交前跑 `bun run check` 与 `bun run build`；涉及接口、配置或数据库的改动要在提交信息里说明兼容性与迁移影响。
 3. 依赖变更走 `bun install` 并提交 lockfile 差异，同时更新 `THIRD_PARTY_NOTICES.md`。
 4. 升级上游 `@akairos/*` 包时，**复核 `scripts/brand-copy.ts` 的中性化规则是否仍然覆盖上游写法**；上游新增同类写法会让构建失败，需要更新规则而不是绕过。
