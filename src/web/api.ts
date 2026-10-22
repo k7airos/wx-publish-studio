@@ -32,7 +32,7 @@ export interface Session {
   role: "admin" | "member";
   /** 服务是否统一持有中转令牌；为真时界面不要求使用者填写 PAT。 */
   relayManaged: boolean;
-  /** 部署可选提供的白名单出口 IP；为 null 时由使用者填写自己的中转出口 IP。 */
+  /** 部署可选提供的白名单出口 IP；为 null 时由使用者自行填写（模式 A 即本服务器的出口 IP，模式 B 才是自己中转的出口 IP）。 */
   whitelistIp: string | null;
   /** 部署形态：neutral 为开源自托管默认文案，hosted 为线上托管部署的原有文案。 */
   copyMode: "neutral" | "hosted";
