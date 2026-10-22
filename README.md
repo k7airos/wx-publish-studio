@@ -20,8 +20,8 @@
 | 项目 | 当前状态 |
 | --- | --- |
 | 公共镜像 | **已发布**。本仓库把**应用、Worker、微信中转**三个镜像发布到 GHCR（`ghcr.io/k7airos/…`），**多架构**（linux/amd64 与 linux/arm64 都有），公开可拉，**不需要镜像仓库账号、不需要登录**。默认路径仍可从源码构建；镜像拉不到时 compose 会自动退回源码构建。 |
-| Worker 镜像 | npm 包 `@akairos/pipeline` **不含 `services/` 目录**，只装 npm 包无法启动 Worker。compose 用 `services/cloud-worker/Dockerfile` 从 Pipeline 仓库的固定提交构建；已经自建好镜像时可用 `PIPELINE_WORKER_IMAGE` 覆盖。 |
-| 微信中转 | 默认**随栈一起起**（模式 A），compose 用公开仓库 `bun-wx-server` 的固定提交构建并运行它；也可以指向你自己的中转（模式 B）。该中转已实现 Pipeline 需要的全部 **7 个**微信端点（`cgi-bin/token`、`material/add_material`、`draft/add`、`draft/update`、`draft/get`、`draft/delete`、`draft/batchget`），并支持 `Idempotency-Key` 幂等去重（按调用方隔离，默认保留 24 小时）——「改稿后覆盖同一篇草稿」与「重复提交不产生重复草稿」都可用。 |
+| Worker 镜像 | npm 包 `@akairos/pipeline` **不含 `services/` 目录**，只装 npm 包无法启动 Worker。默认直接用已发布的 `ghcr.io/k7airos/wx-pipeline-worker`（多架构）；也可以让 compose 用 `services/cloud-worker/Dockerfile` 从 Pipeline 仓库的固定提交现场构建，或用 `PIPELINE_WORKER_IMAGE` 指向你自己的镜像。 |
+| 微信中转 | 默认**随栈一起起**（模式 A），默认直接用已发布的 `ghcr.io/k7airos/wx-relay`（多架构），也可以让 compose 从公开仓库 `bun-wx-server` 的固定提交现场构建；还可以指向你自己的中转（模式 B）。该中转已实现 Pipeline 需要的全部 **7 个**微信端点（`cgi-bin/token`、`material/add_material`、`draft/add`、`draft/update`、`draft/get`、`draft/delete`、`draft/batchget`），并支持 `Idempotency-Key` 幂等去重（按调用方隔离，默认保留 24 小时）——「改稿后覆盖同一篇草稿」与「重复提交不产生重复草稿」都可用。 |
 | 正文图片 | **不需要你自备对象存储**。在编辑器里上传的图片存在应用自己的数据卷，发布时随任务交给 Worker，由 Worker 上传到**微信**——草稿里的图片地址是微信自己的 CDN。正文里直接引用的外链图片，Worker 会在发布时从公网抓取并转存到微信，需要 Worker 能访问外网。只有**主题里的固定素材**指向远程地址时，才需要你另外准备一个公网可达的 HTTPS 地址。 |
 | 实例数量 | app 与 Worker 均为**单实例**。Worker 使用本地 JSON 队列，不支持多副本共享数据卷。 |
 | 鉴权 | 默认 **bootstrap 单用户**（一个访问口令）。**通用 OIDC 可选接入已可用**：填环境变量即可对接任意标准 OIDC 服务（Keycloak / Authentik / Zitadel / Authelia 等），但自助开通成员仍只有 bootstrap 语义，成员需由管理员预先绑定（见「接入统一身份（可选）」）。 |
@@ -42,11 +42,11 @@
 
 ## 前置条件
 
-- **服务器**：2 核 4G 起步；需要能运行 Docker 容器与 Chromium（Worker 渲染用）。
+- **服务器**：2 核 4G 起步。要跑四个容器，其中 **Worker 容器内含 Chromium**（渲染封面与预览），建议给它单独留 1G 以上内存。宿主不需要自己装 Chromium。
 - **Docker 与 Compose**：Docker Engine 24+，`docker compose` **v2.2 以上**（本项目用到 `--wait`，它从 v2.2.0 才有；不确定就升级到最新版）。
 - **PostgreSQL**：由 Compose 内置（`postgres:16-alpine`，固定 digest）。
 - **一个公众号账号**：具备管理员权限，可扫码登录微信公众平台。
-- **一个微信中转服务**：默认**不需要自己准备**——compose 会从公开仓库的固定提交构建并起一个（第 4 个容器），也可以直接用已发布的公开镜像。也可以用你自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约，下面「当前状态」列出的 **7 个**微信端点都要实现。
+- **一个微信中转服务**：默认**不需要自己准备**——compose 用已发布的公开镜像起第 4 个容器（也可以让它从公开仓库的固定提交现场构建）。也可以用你自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约，下面「当前状态」列出的 **7 个**微信端点都要实现。
 - **Worker 能访问外网**：正文里引用的外链图片由 Worker 在发布时抓取并转存到微信。
 
 ## 快速开始
@@ -246,7 +246,7 @@ compose 只检查「有没有填」；**填了但不合规**由应用启动时�
 ## 微信与中转
 
 - **两种模式**：**模式 A**（默认）由 compose 起第 4 个容器 `relay`，地址是 `http://relay:3001`，只在本机网络内可达；**模式 B** 指向你自己的中转地址，compose 不起中转容器。
-- **中转服务从哪来**：模式 A 用公开仓库 `bun-wx-server` 的固定提交构建；模式 B 可以自己实现（契约见 `/api/v1/wx/*`）。
+- **中转服务从哪来**：模式 A 用已发布的 `ghcr.io/k7airos/wx-relay`（也可让 compose 从公开仓库 `bun-wx-server` 的固定提交现场构建）；模式 B 可以自己实现（契约见 `/api/v1/wx/*`）。
 - **PAT 的 scope**：PAT 是中转服务的访问令牌，用来代表你调用中转接口。它由中转服务签发，与微信 AppID/AppSecret 是两回事。`bun-wx-server` 的 scope 里 `wx` 对应 `/api/v1/wx/`。
 - **模式 A 怎么拿 PAT**：跑 `bash scripts/relay-init.sh`，它会创建管理员、生成带 `wx` scope 的 PAT 并写回 `.env` 的 `PUBLISHING_RELAY_PAT`。
 - **IP 白名单**：在公众号后台的「API IP 白名单」里，填**你自己中转服务的出口公网 IP**（不是本应用的服务器 IP）。部署配置了 `PUBLISHING_WX_WHITELIST_IP` 时界面会直接显示该值，否则请在连接向导里自行填写。白名单生效有等待期，第一次存入草稿箱时才会真正验证。

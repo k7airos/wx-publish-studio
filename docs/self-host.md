@@ -4,12 +4,12 @@
 
 ## 需要准备什么
 
-- Docker Engine 24+ 与 `docker compose` v2。
+- Docker Engine 24+ 与 `docker compose` **v2.2 以上**（用到 `--wait`，它从 v2.2.0 才有）。
 - 一个具备管理员权限的微信公众号（能扫码登录微信公众平台）。
 - 磁盘留够：走源码构建要产出应用镜像（约 1GB）、Worker 镜像（约 2.1GB）与中转镜像（约 250MB），加上构建缓存建议预留 10GB 以上；直接用已发布镜像则不需要构建缓存，空间占用小得多。
 - Worker 需要能访问外网：正文里引用的外链图片由它在发布时抓取并转存到微信。
 
-微信中转**默认随栈一起起**（模式 A）：compose 从公开仓库 `bun-wx-server` 的固定提交构建并运行它，不需要自己准备中转服务。也可以用自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约；随栈中转已实现 Pipeline 需要的全部 7 个微信端点并支持 `Idempotency-Key` 幂等去重。
+微信中转**默认随栈一起起**（模式 A）：compose 用已发布的公开镜像起它（也可以让它从公开仓库 `bun-wx-server` 的固定提交现场构建），不需要自己准备中转服务。也可以用自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约；随栈中转已实现 Pipeline 需要的全部 7 个微信端点并支持 `Idempotency-Key` 幂等去重。
 
 本仓库**发布** Docker 镜像到 GHCR：应用、Worker 与中转三个镜像都在 `ghcr.io/k7airos/…` 下公开可拉，**多架构**（linux/amd64 与 linux/arm64 都有），不需要镜像仓库账号、不需要 `docker login`。用已发布镜像是最快的部署路径；也可以全部由 `docker compose build` 在本机构建（不需要任何镜像仓库账号），compose 在镜像拉不到时会自动退回本地构建。
 
@@ -144,7 +144,7 @@ Worker 侧的图片渲染需要 `@napi-rs/canvas`；缺配置或素材不可达�
 
 ## 测试与生产的边界
 
-本地三容器健康测试可用 `https://relay.invalid` 作为明确不可发布的占位地址，并保持空账号。它不会发起微信请求。集成测试用 `PUBLISHING_TEST_MODE=fake-worker` 标记模拟环境，前端显示「模拟测试环境」，不把模拟 `media_id` 当成真实发布证据。正式环境不设置该变量。
+本地做健康测试时用 `PUBLISHING_TEST_MODE=fake-worker` 标记模拟环境：app 连的是模拟 Worker，**不会发起任何微信请求**，也就不需要真的中转——`ZZHUB_WX_BASE_URL` 可以填 `https://relay.invalid` 这类明确不可发布的占位地址，并保持空账号。前端会显示「模拟测试环境」，模拟产出的 `media_id` 不能当成真实发布证据。正式环境不设置该变量。
 
 测试执行者使用专用 `*_test` 数据库，先 `bun run check`／`bun run build`，再分别运行对应测试文件；其中部分会清理指定测试库的应用表。不得指向正式业务库。
 
