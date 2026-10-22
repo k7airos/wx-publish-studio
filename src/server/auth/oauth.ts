@@ -70,7 +70,7 @@ export async function consumeOAuthState(sql: Database, oauth: OAuthConfig, state
   return rows.length === 1;
 }
 
-/** Nezus 兑换码开通的会员为 active，注册试用为 trial；只有 active 且未到期的会员可作为准入凭据。 */
+/** 兑换码开通的会员为 active，注册试用为 trial；只有 active 且未到期的会员可作为准入凭据。 */
 export function membershipEntitlement(membership: unknown, now = Date.now()): Date | null {
   if (!membership || typeof membership !== "object") return null;
   const { status, expiresAt } = membership as Record<string, unknown>;

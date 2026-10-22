@@ -114,6 +114,6 @@
 | 镜像 | 来源仓库 | 固定提交 | 许可判定 | 需要随附 NOTICE 或署名 |
 | --- | --- | --- | --- | --- |
 | Worker | `k7airos/zzhub-pipeline` | `4cf5725f35758fa5fada8786cb57cd9960388c7f` | 仓库内 `LICENSE` 为 MIT | 需要随附许可文本（许可文本在该镜像的源码仓库内） |
-| 微信中转 | `k7airos/bun-wx-server` | `faa8913e51790506c27c2f8a886c4ec8be583041` | MIT（仓库内 `LICENSE` 原文，`package.json` 已声明 `"license": "MIT"`，Copyright (c) 2026 Kairos (k7airos)） | 无需随附 NOTICE；引用时保留其 MIT 许可声明即可 |
+| 微信中转 | `k7airos/bun-wx-server` | `3a9864cbb8971ca676259d05f5f937d1f2e842bc` | MIT（仓库内 `LICENSE` 原文，`package.json` 已声明 `"license": "MIT"`，Copyright (c) 2026 Kairos (k7airos)） | 无需随附 NOTICE；引用时保留其 MIT 许可声明即可 |
 
-> 这两个镜像由使用者自己的 Docker 主机在本地构建，不经过任何镜像仓库账号，也不由本项目再分发。
+> 这两个镜像既可以由本项目发布到 GHCR（打 `v*` tag 时随应用镜像一起发布，多架构、公开可拉），也可以由使用者自己的 Docker 主机从上面的固定提交在本地构建。两条路径都不需要镜像仓库账号。

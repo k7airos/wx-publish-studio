@@ -229,6 +229,8 @@ compose 只检查「有没有填」；**填了但不合规**由应用启动时�
 | `PUBLISHING_AUTH_MODE`（可选） | `bootstrap`（默认）或 `oauth` | 需要 |
 | `PUBLISHING_OAUTH_*`（可选） | oauth 模式下的身份源配置：issuer、client id/secret、redirect，以及标准发现或三个显式端点（见「接入统一身份（可选）」） | 需要 |
 | `PUBLISHING_COPY_MODE`（可选） | 客户可见文案形态：`neutral`（默认）/ `hosted` | 需要 |
+| `PUBLISHING_BODY_IMAGE_SOURCE_ORIGIN` / `PUBLISHING_BODY_IMAGE_SOURCE_PREFIX`（可选） | 正文里**从外部地址导入图片**时允许的来源域名与路径前缀，例如 `https://img.example.com` + `/owner/hash/`。留空 = 不允许导入外部图片，正文图片只能靠编辑器上传 | 需要 |
+| `PUBLISHING_BODY_IMAGE_OWNER_SOURCES`（可选） | 按使用者（owner）单独授权的图片来源，JSON 形式：`{"<owner-uuid>":[{"origin":"https://img.example.com","pathPrefix":"/their/files/"}]}`。用于迁移既有素材 | 需要 |
 | `APP_PORT`（可选） | 宿主端口，默认 `18889` | 需要 |
 | `APP_IMAGE`（可选） | 覆盖应用镜像引用，默认 `ghcr.io/k7airos/wx-publish-studio:0.7.1`（公开镜像）。要固定到别的版本或自己的 registry 时填它 | 需要（改镜像要重建容器） |
 | `PIPELINE_WORKER_IMAGE`（可选） | 覆盖 Worker 镜像引用，默认 `ghcr.io/k7airos/wx-pipeline-worker:0.24.0`（公开镜像） | 需要（改镜像要重建容器） |

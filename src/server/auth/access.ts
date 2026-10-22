@@ -91,7 +91,7 @@ export async function addMember(sql: Database, config: Pick<AppConfig, "oauth">,
 }
 
 /**
- * 按 Nezus 有效会员自动开通：新 owner、member、identity 与审计在同一锁内建立。
+ * 按有效会员资格自动开通：新 owner、member、identity 与审计在同一锁内建立。
  * 身份已存在时不做任何修改，交由登录流程按原成员资格处理，停用成员不会被重新激活。
  */
 export async function provisionFromLogin(transaction: Database, issuer: string, subject: string, accessUntil: Date) {
