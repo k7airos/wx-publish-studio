@@ -96,7 +96,7 @@ openssl rand -hex 32   # RELAY_JWT_SECRET（同栈中转的签名密钥，模式
 
 ### 3. 一条命令起栈
 
-默认就是**用已发布镜像**起栈，**不需要改 `.env`**：
+**方式一（默认）**：用已发布镜像起栈，**不需要改 `.env`**：
 
 ```sh
 docker compose up -d --wait
