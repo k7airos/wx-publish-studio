@@ -19,10 +19,12 @@
 2. 明确 `APP_ORIGIN`。SSH 转发使用 `http://127.0.0.1:18889`，浏览器实际访问端口须一致；独立 HTTPS 入口填完整 origin。只接受 HTTPS 或 HTTP loopback，不接受路径、userinfo 或通配 origin。Cookie 的 Secure 由此固定配置决定，不信任 `X-Forwarded-*`。应用容器内部监听 `0.0.0.0`，宿主仍只暴露 `127.0.0.1`，数据库、Worker 与同栈中转都不映射端口。
 3. **保持 `ZZHUB_WX_BASE_URL` 留空**（模式 A：同栈自带中转）。填上地址就是模式 B（外部中转），此时 compose 不起中转容器、Worker 指向你的地址。注意 `.env` 里的 `RELAY_MODE` 与 `RELAY_REPLICAS` 是派生变量，依赖 `ZZHUB_WX_BASE_URL` 的取值，必须留在它后面、且不要追加新的 `ZZHUB_WX_BASE_URL` 行到文件末尾。
 4. 起栈，二选一：
-   - **用已发布镜像（快）**：在 `.env` 里追加 `APP_IMAGE=ghcr.io/k7airos/wx-publish-studio:0.7.1`、`PIPELINE_WORKER_IMAGE=ghcr.io/k7airos/wx-pipeline-worker:0.24.0`、`RELAY_IMAGE=ghcr.io/k7airos/wx-relay:0.2.2`，然后跑 `docker compose up -d --wait`（**不带 `--build`**）。
-   - **从源码构建**：跑 `docker compose up -d --build --wait`。应用镜像由本地代码构建；Worker 与中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建，**不需要任何镜像仓库账号**。冷构建约 10-20 分钟（Worker 最重，要装 Chromium 与 Noto CJK 字体），有缓存时是秒级。
+   - **用已发布镜像（快，默认）**：直接 `docker compose up -d --wait`。compose 默认拉取三个公开镜像（`ghcr.io/k7airos/…`，多架构，公开可拉），**不需要改 `.env`、不需要镜像仓库账号**。镜像拉不到时会自动退回本地构建。
+   - **从源码构建**：`docker compose up -d --build --wait`。应用镜像由本地代码构建；Worker 与中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建，同样不需要镜像仓库账号。冷构建约 10-20 分钟（Worker 最重，要装 Chromium 与 Noto CJK 字体），有缓存时是秒级。
 
    两种方式完成后 `docker compose ps` 都应显示四个服务都是 `healthy`。
+
+   > 镜像引用必须是**完整 registry 路径**（`ghcr.io/k7airos/…`）。裸名字（例如 `wx-publish-studio:0.7.1`）会被 Docker 当成 Docker Hub 上的镜像去拉——那等于把部署交给一个可能被他人抢注的命名空间。要固定版本或换自己的 registry 时用 `APP_IMAGE` / `PIPELINE_WORKER_IMAGE` / `RELAY_IMAGE` 覆盖。
 5. 初始化同栈中转：模式 A 下中转刚起来时还没有管理员，`bash scripts/relay-init.sh` 会创建管理员、生成带 `wx` scope 的 PAT 并写回 `.env` 的 `PUBLISHING_RELAY_PAT`，随后再跑一次 `docker compose up -d --wait` 让应用加载令牌。模式 B 下这一步跳过，在界面里填你自己中转的 PAT。
 6. 打开配置的 origin，按所选模式使用访问口令。修改本机端口时同步 `.env` 的 `APP_PORT` 与 `APP_ORIGIN`。
 
@@ -154,7 +156,7 @@ Docker app 固定安装 `fonts-noto-cjk=1:20240730+repack1-1`。封面测量前�
 
 ## 已知限制
 
-- **没有公共镜像**：应用、Worker 与同栈中转三个镜像都由 `docker compose build` 在本机构建；Worker 与中转用 git context 从两个公开仓库的固定提交构建，不需要镜像仓库账号。
+- **镜像有两种来源**：默认拉本项目发布的公开镜像（`ghcr.io/k7airos/…`，多架构，公开可拉，不需要镜像仓库账号）；也可以用 `docker compose up -d --build --wait` 全部在本地构建——此时 Worker 与中转用 git context 从两个公开仓库的固定提交构建，同样不需要镜像仓库账号。compose 的 `build:` 始终保留，镜像拉不到时会自动退回本地构建。
 - **中转端点覆盖**：随栈中转已实现 `cgi-bin/token`、`material/add_material`、`draft/add`、`draft/update`、`draft/get`、`draft/delete`、`draft/batchget` 全部 7 个端点，并支持 `Idempotency-Key` 幂等去重（按调用方隔离，默认 24 小时）。模式 B 用自己的中转时需自行保证同样的契约。
 - **仅 bootstrap 鉴权为默认**：无注册、无群发、无多用户配额管理；统一身份（OIDC）可作为可选接入，见 README「接入统一身份（可选）」。
 - **正文图片依赖 COS**：见上一节。

@@ -96,29 +96,19 @@ openssl rand -hex 32   # RELAY_JWT_SECRET（同栈中转的签名密钥，模式
 
 ### 3. 一条命令起栈
 
-起栈有两种方式。**推荐方式一**（用已发布镜像，几分钟就好）；想从源码构建、或镜像仓库不可达，就选方式二。
-
-#### 方式一：用已发布镜像（推荐）
-
-在 `.env` 里追加三行，指到公开镜像：
-
-```sh
-APP_IMAGE=ghcr.io/k7airos/wx-publish-studio:0.7.1
-PIPELINE_WORKER_IMAGE=ghcr.io/k7airos/wx-pipeline-worker:0.24.0
-RELAY_IMAGE=ghcr.io/k7airos/wx-relay:0.2.2
-```
-
-然后启动。**注意这条命令不带 `--build`**（带了会从源码重建、并把镜像标签盖成本地构建产物）：
+默认就是**用已发布镜像**起栈，**不需要改 `.env`**：
 
 ```sh
 docker compose up -d --wait
 ```
 
-这三个镜像都是多架构的（linux/amd64 与 linux/arm64 都有），公开可拉，不需要 `docker login`。镜像拉不到时 compose 会**自动退回从源码构建**（方式二），所以这一步失败不会把部署卡死。
+这条命令会拉取三个公开镜像（应用、Worker、微信中转，都是 `linux/amd64` 与 `linux/arm64` 多架构），起四个容器并等到全部健康。**不需要镜像仓库账号，不需要 `docker login`。** 镜像拉不到时 compose 会**自动退回从源码构建**（方式二），不会把部署卡死。
 
 > 失败现象：`manifest unknown` / `pull access denied` —— 标签写错了，或镜像还没发布。先跑 `docker manifest inspect ghcr.io/k7airos/wx-publish-studio:0.7.1` 确认标签存在；确认存在却拉不动，就直接用方式二。
 
 #### 方式二：从源码构建
+
+想自己编译、或镜像仓库不可达，用带 `--build` 的命令：
 
 ```sh
 docker compose up -d --build --wait
@@ -133,10 +123,12 @@ docker compose up -d --build --wait
 
 首次构建要联网（拉基础镜像、克隆上面两个公开仓库），**冷构建大约 10-20 分钟**，其中 Worker 最重（要装 Chromium 与 Noto CJK 字体，镜像约 2.1GB），中转约 250MB，应用约 1GB。有构建缓存时后续启动是秒级。构建完 `docker compose ps` 应当四个服务都是 `healthy`。
 
+> **源码构建过的镜像会盖掉同名标签**：本地构建产物用的就是 `ghcr.io/k7airos/…` 这个标签名。之后再跑不带 `--build` 的 `up`，compose 会继续用本地那份。想换回官方镜像，先 `docker compose pull`。
+>
 > 失败现象：
 > - `git clone` / `could not read from remote repository` —— 构建 Worker 与中转时要拉公开仓库，检查网络、代理与 DNS。
 > - `required variable ... is missing` —— `.env` 少填（见第 2 步）。
-> - `pull access denied` —— 容器标签指向了一个不存在的镜像；用方式一时确认标签拼写，用方式二时确认启动命令带 `--build`、并且没有把 `PIPELINE_WORKER_IMAGE` 指到不存在的镜像。
+> - `pull access denied` —— 容器标签指向了一个不存在的镜像；确认标签拼写，或确认启动命令带 `--build`。
 > - 一直卡在 `waiting for ... to be healthy` —— `docker compose logs worker`、`docker compose logs relay` 看具体报错。
 
 ### 4. 初始化同栈中转（拿中转令牌）
@@ -238,9 +230,9 @@ compose 只检查「有没有填」；**填了但不合规**由应用启动时�
 | `PUBLISHING_OAUTH_*`（可选） | oauth 模式下的身份源配置：issuer、client id/secret、redirect，以及标准发现或三个显式端点（见「接入统一身份（可选）」） | 需要 |
 | `PUBLISHING_COPY_MODE`（可选） | 客户可见文案形态：`neutral`（默认）/ `hosted` | 需要 |
 | `APP_PORT`（可选） | 宿主端口，默认 `18889` | 需要 |
-| `APP_IMAGE`（可选） | 覆盖应用镜像引用，默认 `wx-publish-studio:0.7.1`。用已发布镜像时填 `ghcr.io/k7airos/wx-publish-studio:0.7.1` | 需要（改镜像要重建容器） |
-| `PIPELINE_WORKER_IMAGE`（可选） | 覆盖 Worker 镜像引用，默认 `wx-pipeline-worker:0.24.0`。用已发布镜像时填 `ghcr.io/k7airos/wx-pipeline-worker:0.24.0` | 需要（改镜像要重建容器） |
-| `RELAY_IMAGE`（可选） | 覆盖中转镜像引用，默认 `wx-relay:0.2.2`。用已发布镜像时填 `ghcr.io/k7airos/wx-relay:0.2.2` | 需要 |
+| `APP_IMAGE`（可选） | 覆盖应用镜像引用，默认 `ghcr.io/k7airos/wx-publish-studio:0.7.1`（公开镜像）。要固定到别的版本或自己的 registry 时填它 | 需要（改镜像要重建容器） |
+| `PIPELINE_WORKER_IMAGE`（可选） | 覆盖 Worker 镜像引用，默认 `ghcr.io/k7airos/wx-pipeline-worker:0.24.0`（公开镜像） | 需要（改镜像要重建容器） |
+| `RELAY_IMAGE`（可选） | 覆盖中转镜像引用，默认 `ghcr.io/k7airos/wx-relay:0.2.2`（公开镜像） | 需要 |
 | `RELAY_ADMIN_USERNAME` / `RELAY_ADMIN_PASSWORD`（可选） | 同栈中转的管理员账号，供 `scripts/relay-init.sh` 使用 | 不需要（脚本自己读写 `.env`） |
 
 > `RELAY_MODE` 与 `RELAY_REPLICAS` 是**派生变量**，由 `.env` 里的 `ZZHUB_WX_BASE_URL` 推导（留空 = 模式 A，填写 = 模式 B）。请保留它们，并保持它们位于 `ZZHUB_WX_BASE_URL` 之后。
@@ -277,6 +269,7 @@ compose 只检查「有没有填」；**填了但不合规**由应用启动时�
 
 ```sh
 git pull
+docker compose pull
 docker compose up -d --wait
 ```
 
@@ -289,7 +282,9 @@ docker compose up -d --build --wait
 
 > 源码构建路径下，Worker 与中转镜像来自两个公开仓库的固定提交，compose 会用构建缓存复用之前的层；缓存失效时按「快速开始」第 3 步的耗时估计。
 
-> **用了已发布镜像就别加 `--build`**：加了会用本地源码重建，并覆盖掉镜像标签，之后 `docker compose pull` 就拉不到那个标签了。
+> **换版本时要重新拉镜像**：compose 里的默认标签是写死的版本号，标签没变时 `up` 不会重新拉。升级版本后先 `docker compose pull`，再 `up`。
+
+> **源码构建过的镜像会盖掉同名标签**：本地构建产物用的就是 `ghcr.io/k7airos/…` 这个标签名。之后再跑不带 `--build` 的 `up`，compose 会继续用本地那份。想换回官方镜像，先 `docker compose pull`。
 
 > 如果你把 `APP_IMAGE` 指向了**自己的** registry（`APP_IMAGE=registry.example.com/wx-publish-studio:1.2.3`），那就改成先推再拉：
 > ```sh
@@ -318,10 +313,10 @@ docker compose up -d --build --wait
 | 现象 | 排查方向 |
 | --- | --- |
 | `docker compose` 报缺少变量 | compose 在缺必填项时会直接报错并指出变量名；补齐 `.env` 后重新执行。模式 A 缺的是 `RELAY_JWT_SECRET`。 |
-| `docker compose pull` 报 `pull access denied` | 镜像标签指向了一个不存在的镜像（多半是 `.env` 里手抄错了标签）。用 `docker manifest inspect <标签>` 确认标签存在；不存在就改回 compose 里的默认值走源码构建。 |
+| `docker compose pull` 报 `pull access denied` | 镜像标签指向了一个不存在的镜像（多半是 `.env` 里手抄错了标签）。用 `docker manifest inspect <标签>` 确认标签存在；不存在就改回 compose 里的默认值，或改走源码构建。 |
 | 构建时卡在拉公开仓库 | Worker 与中转镜像从 GitHub 的公开仓库以 git context 构建，检查网络、代理与 DNS。 |
 | 登录总是失败 | `APP_ORIGIN` 与浏览器地址栏的 origin 必须完全一致（协议、域名、端口）。SSH 隧道换端口后要同步改 `.env` 的 `APP_PORT` 与 `APP_ORIGIN`。 |
-| Worker 镜像拉不到 | `PIPELINE_WORKER_IMAGE` 要么指向公开镜像（`ghcr.io/k7airos/wx-pipeline-worker:0.24.0`），要么指向你本地已构建的镜像；不填就用 compose 从公开仓库现建。 |
+| Worker 镜像拉不到 | 默认就是公开镜像 `ghcr.io/k7airos/wx-pipeline-worker:0.24.0`；拉不动多半是网络问题。也可以用 `PIPELINE_WORKER_IMAGE` 指向自己已构建的镜像，或改走源码构建。 |
 | Worker 起不来 / 一直不健康 | `docker compose logs worker`：先看是不是连不上 `ZZHUB_WX_BASE_URL`，再看中转是否已启动。 |
 | 中转起不来 / 一直不健康 | `docker compose logs relay`：模式 A 下先确认 `.env` 里有 `RELAY_JWT_SECRET`。 |
 | `scripts/relay-init.sh` 报登录失败 | `.env` 的 `RELAY_ADMIN_PASSWORD` 与中转里已有管理员的口令不一致；清掉 `relay-data` 卷重新初始化，或改回原口令。 |
