@@ -89,7 +89,10 @@ services:
       PORT: "3001"
       DATABASE_PATH: /data/app.sqlite
       # 仅模式 A 需要：中转的生产模式必须显式配置 JWT_SECRET；模式 B 下中转不启动，此值不使用。
+      # 模式 B 时 RELAY_MODE 非空，这里的取值只是占位，中转容器不会被创建。
       JWT_SECRET: ${RELAY_MODE:-${RELAY_JWT_SECRET:?Set RELAY_JWT_SECRET (the bundled relay requires it)}}
+      # 幂等去重的保留时长（秒），默认 24 小时。模式 B 用自己的中转时在那边配同名变量。
+      WX_IDEMPOTENCY_TTL_SECONDS: ${WX_IDEMPOTENCY_TTL_SECONDS:-86400}
     volumes:
       - relay-data:/data
     networks: [studio]

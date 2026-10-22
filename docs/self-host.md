@@ -7,7 +7,7 @@
 - Docker Engine 24+ 与 `docker compose` v2。
 - 一个具备管理员权限的微信公众号（能扫码登录微信公众平台）。
 - 磁盘留够：走源码构建要产出应用镜像（约 1GB）、Worker 镜像（约 2.1GB）与中转镜像（约 250MB），加上构建缓存建议预留 10GB 以上；直接用已发布镜像则不需要构建缓存，空间占用小得多。
-- 如果要发布带图片的正文，还需要对象存储（COS 一类）与公开 HTTPS 地址。
+- Worker 需要能访问外网：正文里引用的外链图片由它在发布时抓取并转存到微信。
 
 微信中转**默认随栈一起起**（模式 A）：compose 从公开仓库 `bun-wx-server` 的固定提交构建并运行它，不需要自己准备中转服务。也可以用自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约；随栈中转已实现 Pipeline 需要的全部 7 个微信端点并支持 `Idempotency-Key` 幂等去重。
 
@@ -132,7 +132,15 @@ PUBLISHING_COPY_MODE=hosted
 
 ## 正文图片
 
-正文图片走对象存储（COS 一类）的上传与公开 HTTPS 地址，不是开箱即用能力。Worker 侧的图片渲染需要 `@napi-rs/canvas`；固定素材需要先上传到对象存储并替换为 HTTPS URL。缺配置时相关能力会明确报错，不会静默降级。
+正文图片有三条路径，**不需要自托管者自备对象存储**：
+
+- **在编辑器里上传的图片**：存在应用自己的 `app-data` 卷（`body-assets/`），发布时随任务快照交给 Worker，由 Worker 通过微信素材接口上传，草稿里的图片地址是**微信自己的 CDN**。
+- **正文里直接引用的外链图片**（`http(s)://`）：Worker 在发布时从公网抓取，再转存到微信。这要求 Worker 容器能访问外网。
+- **主题里的固定素材**（模板自带的图）：默认来自 Worker 镜像内的本地文件；如果你的主题把它指向了远程地址，那部分需要你自己准备一个公网可达的 HTTPS 地址（例如放在对象存储上）。
+
+`PUBLISHING_BODY_IMAGE_SOURCE_ORIGIN` / `PUBLISHING_BODY_IMAGE_SOURCE_PREFIX` / `PUBLISHING_BODY_IMAGE_OWNER_SOURCES` 是「把**既有 CDN 上的图片导入本项目**」的来源白名单（按 origin + 路径前缀限定），不是上传目标；留空表示不允许导入外部图片。
+
+Worker 侧的图片渲染需要 `@napi-rs/canvas`；缺配置或素材不可达时相关能力会明确报错，不会静默降级。
 
 ## 测试与生产的边界
 
@@ -159,7 +167,7 @@ Docker app 固定安装 `fonts-noto-cjk=1:20240730+repack1-1`。封面测量前�
 - **镜像有两种来源**：默认拉本项目发布的公开镜像（`ghcr.io/k7airos/…`，多架构，公开可拉，不需要镜像仓库账号）；也可以用 `docker compose up -d --build --wait` 全部在本地构建——此时 Worker 与中转用 git context 从两个公开仓库的固定提交构建，同样不需要镜像仓库账号。compose 的 `build:` 始终保留，镜像拉不到时会自动退回本地构建。
 - **中转端点覆盖**：随栈中转已实现 `cgi-bin/token`、`material/add_material`、`draft/add`、`draft/update`、`draft/get`、`draft/delete`、`draft/batchget` 全部 7 个端点，并支持 `Idempotency-Key` 幂等去重（按调用方隔离，默认 24 小时）。模式 B 用自己的中转时需自行保证同样的契约。
 - **仅 bootstrap 鉴权为默认**：无注册、无群发、无多用户配额管理；统一身份（OIDC）可作为可选接入，见 README「接入统一身份（可选）」。
-- **正文图片依赖 COS**：见上一节。
+- **正文图片**：编辑器上传的图片走应用自己的数据卷并在发布时转存到微信，不需要自备对象存储；正文里的外链图片需要 Worker 能出网；主题里的固定素材若指向远程地址，仍需公网可达的 HTTPS 地址。见上一节。
 - **单实例**：app 与 Worker 均单副本。
 - **同栈中转不映射宿主端口**：模式 A 的中转只在 compose 网络内可达（`http://relay:3001`），外部访问需自行反代。
 - **分发产物里的默认文案**：上游编辑器包的默认主题带有示例品牌文案，本项目在构建期按通用规则中性化（规则见 `scripts/brand-copy.ts`，不写死任何具体名称）；上游包升级后需复核。详见 README「当前状态」。

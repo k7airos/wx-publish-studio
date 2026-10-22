@@ -22,7 +22,7 @@
 | 公共镜像 | **已发布**。本仓库把**应用、Worker、微信中转**三个镜像发布到 GHCR（`ghcr.io/k7airos/…`），**多架构**（linux/amd64 与 linux/arm64 都有），公开可拉，**不需要镜像仓库账号、不需要登录**。默认路径仍可从源码构建；镜像拉不到时 compose 会自动退回源码构建。 |
 | Worker 镜像 | npm 包 `@akairos/pipeline` **不含 `services/` 目录**，只装 npm 包无法启动 Worker。compose 用 `services/cloud-worker/Dockerfile` 从 Pipeline 仓库的固定提交构建；已经自建好镜像时可用 `PIPELINE_WORKER_IMAGE` 覆盖。 |
 | 微信中转 | 默认**随栈一起起**（模式 A），compose 用公开仓库 `bun-wx-server` 的固定提交构建并运行它；也可以指向你自己的中转（模式 B）。该中转已实现 Pipeline 需要的全部 **7 个**微信端点（`cgi-bin/token`、`material/add_material`、`draft/add`、`draft/update`、`draft/get`、`draft/delete`、`draft/batchget`），并支持 `Idempotency-Key` 幂等去重（按调用方隔离，默认保留 24 小时）——「改稿后覆盖同一篇草稿」与「重复提交不产生重复草稿」都可用。 |
-| 正文图片 | 正文图片依赖对象存储（COS 一类）的图片上传与公开 HTTPS 地址，**不是**开箱即用能力。 |
+| 正文图片 | **不需要你自备对象存储**。在编辑器里上传的图片存在应用自己的数据卷，发布时随任务交给 Worker，由 Worker 上传到**微信**——草稿里的图片地址是微信自己的 CDN。正文里直接引用的外链图片，Worker 会在发布时从公网抓取并转存到微信，需要 Worker 能访问外网。只有**主题里的固定素材**指向远程地址时，才需要你另外准备一个公网可达的 HTTPS 地址。 |
 | 实例数量 | app 与 Worker 均为**单实例**。Worker 使用本地 JSON 队列，不支持多副本共享数据卷。 |
 | 鉴权 | 默认 **bootstrap 单用户**（一个访问口令）。**通用 OIDC 可选接入已可用**：填环境变量即可对接任意标准 OIDC 服务（Keycloak / Authentik / Zitadel / Authelia 等），但自助开通成员仍只有 bootstrap 语义，成员需由管理员预先绑定（见「接入统一身份（可选）」）。 |
 | 注册与群发 | 无注册、无群发、无多用户配额管理。 |
@@ -47,7 +47,7 @@
 - **PostgreSQL**：由 Compose 内置（`postgres:16-alpine`，固定 digest）。
 - **一个公众号账号**：具备管理员权限，可扫码登录微信公众平台。
 - **一个微信中转服务**：默认**不需要自己准备**——compose 会从公开仓库的固定提交构建并起一个（第 4 个容器），也可以直接用已发布的公开镜像。也可以用你自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约，下面「当前状态」列出的 **7 个**微信端点都要实现。
-- **对象存储（COS 一类）**：如果你要发布带图片的正文，需要配置图片上传与公开 HTTPS 地址。
+- **Worker 能访问外网**：正文里引用的外链图片由 Worker 在发布时抓取并转存到微信。
 
 ## 快速开始
 
@@ -104,7 +104,7 @@ docker compose up -d --wait
 
 这条命令会拉取三个公开镜像（应用、Worker、微信中转，都是 `linux/amd64` 与 `linux/arm64` 多架构），起四个容器并等到全部健康。**不需要镜像仓库账号，不需要 `docker login`。** 镜像拉不到时 compose 会**自动退回从源码构建**（方式二），不会把部署卡死。
 
-> 失败现象：`manifest unknown` / `pull access denied` —— 标签写错了，或镜像还没发布。先跑 `docker manifest inspect ghcr.io/k7airos/wx-publish-studio:0.7.1` 确认标签存在；确认存在却拉不动，就直接用方式二。
+> 失败现象：`manifest unknown` / `pull access denied` —— 标签写错了，或镜像还没发布。先直接 `docker pull ghcr.io/k7airos/wx-publish-studio:0.7.1` 试一次，报错信息就是最准的说明；也可以在 <https://github.com/k7airos/wx-publish-studio/pkgs/container/wx-publish-studio> 看已发布的标签。确认标签存在却拉不动，就直接用方式二。
 
 #### 方式二：从源码构建
 
@@ -173,7 +173,7 @@ docker compose up -d --wait
 > - 存入草稿箱报 IP 白名单错误 —— 白名单生效有等待期，等几分钟再试；另外确认填的是**中转服务的出口 IP**，不是这台服务器的 IP。
 > - 存入草稿箱报 401 —— PAT 不对或 scope 缺 `wx`。
 > - 封面渲染失败、提示字体不可用 —— 封面渲染依赖固定的 Noto CJK 字体文件，镜像内已固定安装，别改 Dockerfile。
-> - 正文里的外链图片不显示 —— 正文图片依赖对象存储，需要额外配置；先在编辑器里上传本地图片。
+> - 正文里的外链图片不显示 —— Worker 在发布时要能访问那个图片地址（确认服务器能出网）；更省事的是在编辑器里上传图片，走应用自己的存储。
 
 ### 模式 B：用自己的中转
 
@@ -304,7 +304,7 @@ docker compose up -d --build --wait
 - **单实例**：app 与 Worker 都不能跑多副本。Worker 是本地 JSON 队列，共享卷多副本会互相覆盖。
 - **同栈中转只在容器网络内可达**：模式 A 的中转不映射宿主端口，只能被同栈的 Worker 通过 `http://relay:3001` 访问。
 - **中转端点覆盖**：随栈中转已实现全部 7 个微信端点并支持 `Idempotency-Key` 去重；模式 B 用自己的中转时，请确认它实现了同样的契约。
-- **正文图片依赖 COS**：带图片正文需要配置对象存储与公开 HTTPS 地址。
+- **正文图片**：编辑器上传的图片存在应用自己的数据卷，发布时转存到微信，**不需要自备对象存储**；正文里引用的外链图片需要 Worker 能出网；主题里的固定素材若指向远程地址，仍需公网可达的 HTTPS 地址。
 - **默认仍是 bootstrap 单用户**：只有一个访问口令。通用 OIDC **可以接入**（见下节），但多用户配额、邀请制与自助开通成员仍未提供；OIDC 登录的用户需要管理员预先绑定成员。
 - **无注册、无群发**：不提供账号体系，也不提供任何群发能力。
 - **只写草稿箱**：不读取公众号已发布内容，不做数据统计。
@@ -315,7 +315,9 @@ docker compose up -d --build --wait
 | 现象 | 排查方向 |
 | --- | --- |
 | `docker compose` 报缺少变量 | compose 在缺必填项时会直接报错并指出变量名；补齐 `.env` 后重新执行。模式 A 缺的是 `RELAY_JWT_SECRET`。 |
-| `docker compose pull` 报 `pull access denied` | 镜像标签指向了一个不存在的镜像（多半是 `.env` 里手抄错了标签）。用 `docker manifest inspect <标签>` 确认标签存在；不存在就改回 compose 里的默认值，或改走源码构建。 |
+| `docker compose pull` 报 `pull access denied` | 镜像标签指向了一个不存在的镜像（多半是 `.env` 里手抄错了标签）。直接 `docker pull <标签>` 试一次，报错信息就是最准的说明；也可以在 <https://github.com/k7airos/wx-publish-studio/pkgs/container/wx-publish-studio> 看已发布的标签。不存在就改回 compose 里的默认值，或改走源码构建。 |
+| 端口已被占用（`Bind for 127.0.0.1:18889 failed`） | 宿主上这个端口已经有别的进程或另一套栈在跑。改 `.env` 的 `APP_PORT`（例如 `18890`），并把 `APP_ORIGIN` 同步改成同一个端口。 |
+| 首启后改了 `POSTGRES_PASSWORD`，应用连不上库 | 数据库卷里已经用旧密码建好的角色还在。改密码要用数据库自身的口令修改方式，或清掉 `database-data` 卷重来（**会丢数据**）。 |
 | 构建时卡在拉公开仓库 | Worker 与中转镜像从 GitHub 的公开仓库以 git context 构建，检查网络、代理与 DNS。 |
 | 登录总是失败 | `APP_ORIGIN` 与浏览器地址栏的 origin 必须完全一致（协议、域名、端口）。SSH 隧道换端口后要同步改 `.env` 的 `APP_PORT` 与 `APP_ORIGIN`。 |
 | Worker 镜像拉不到 | 默认就是公开镜像 `ghcr.io/k7airos/wx-pipeline-worker:0.24.0`；拉不动多半是网络问题。也可以用 `PIPELINE_WORKER_IMAGE` 指向自己已构建的镜像，或改走源码构建。 |
