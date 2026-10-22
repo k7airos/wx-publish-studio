@@ -7,7 +7,8 @@
 - 仓库名：`k7airos/wx-publish-studio`
 - 仓库与镜像名统一为 `wx-publish-studio`。
 - 本项目**不发布 npm 包**；依赖全部走公共 `@akairos/*`。
-- 应用不发布公共 Docker 镜像，自托管者自行 `docker compose build`；Worker 与微信中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建（见 README「快速开始」第 3 步），不需要镜像仓库账号。
+- **Docker 镜像公开发布到 GHCR**：`ghcr.io/k7airos/wx-publish-studio`、`wx-pipeline-worker`、`wx-relay`，均为 `linux/amd64` 与 `linux/arm64` 多架构，**公开可匿名拉取**，不需要镜像仓库账号。镜像由打 `v*` tag 触发的工作流构建（见下文「后续发版怎么继续」）。
+- 同时保留**从源码构建**的路径：Worker 与微信中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建（见 README「快速开始」第 3 步方式二），同样不需要镜像仓库账号；compose 在镜像拉不到时会自动退回本地构建。
 
 ## 干净历史
 
@@ -44,7 +45,8 @@
 2. 每次提交前跑 `bun run check` 与 `bun run build`；涉及接口、配置或数据库的改动要在提交信息里说明兼容性与迁移影响。
 3. 依赖变更走 `bun install` 并提交 lockfile 差异，同时更新 `THIRD_PARTY_NOTICES.md`。
 4. 升级上游 `@akairos/*` 包时，**复核 `scripts/brand-copy.ts` 的中性化规则是否仍然覆盖上游写法**；上游新增同类写法会让构建失败，需要更新规则而不是绕过。
-5. 发布新版本时更新 `package.json` 版本、`compose.yaml` 里 `APP_IMAGE` 的默认 tag、README 里的镜像示例。
+5. 发布新版本时更新 `package.json` 版本、compose 里三个镜像的默认 tag、README 与 `.env.example` 里的镜像示例。
+6. 打 `v*` tag 触发镜像发布工作流，产出三个镜像的 amd64+arm64 产物并推到 GHCR；每个镜像同时带发布版本与组件版本标签。**Worker 与中转的构建来源是固定提交**，分别在 `compose.yaml` 的 `build.context` 与发布工作流的 `matrix.ref`，升级其中之一时**两处必须同步改**。
 
 ## 许可
 

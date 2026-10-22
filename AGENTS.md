@@ -24,6 +24,7 @@ bun run build   # vite build
 | `migrations` | 按编号排序的 SQL 迁移，启动时自动执行，记录在 `schema_migrations`。 |
 | `tests` | Bun 测试。数据库测试需要专用 `*_test` 库，并要设 `TYPESET_ARTICLE_COVER_FONT_PATH`。 |
 | `scripts` | 一次性运维脚本。 |
+| `.github/workflows` | CI（每次推送与 PR）与镜像发布（打 `v*` tag，多架构 → GHCR）。 |
 
 ## 约定
 
@@ -44,6 +45,13 @@ bun run build   # vite build
 2. 提交前跑 `bun run check` 与 `bun run build`。
 3. 涉及接口、配置或数据库的改动，需要说明兼容性与迁移影响。
 4. 不要提交 `.env`、账号文件、素材目录或任何凭据。
+
+## 发布
+
+- 打 `v*` tag 触发 `.github/workflows/release-images.yml`，构建**应用／Worker／中转**三个镜像的 `linux/amd64` 与 `linux/arm64` 产物，推到 GHCR（`ghcr.io/k7airos/…`，用仓库自带的 `GITHUB_TOKEN`，无需额外凭据）；配置了 Docker Hub 密文时同推。
+- 每个镜像同时带**发布版本**与**组件版本**标签（应用与 tag 同版本；Worker 取 Pipeline 包版本；中转取中转包版本），另有 `latest`。
+- **Worker 与中转的构建来源是固定提交**：分别在 `compose.yaml` 的 `build.context` 与发布工作流的 `matrix.ref`，**两者必须一致**，升级其中之一时同步改两处。
+- 多架构前提：基础镜像 digest 必须固定到**多架构 index**；`bun build --compile` 必须显式给 `--target`，否则产物是宿主架构二进制。
 
 ## 许可与第三方声明
 
