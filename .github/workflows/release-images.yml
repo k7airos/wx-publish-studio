@@ -152,11 +152,25 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
+          # 给每个版本都附一段「怎么用」，自托管者不必先去翻 README。
+          notes="$(mktemp)"
+          cat > "$notes" <<'EOF'
+          ## 这个版本怎么用
+
+          1. 克隆仓库，按 README「快速开始」第 2 步填好 `.env`（六项必填）。
+          2. 起栈：想快就用已发布镜像 `docker compose up -d --wait`；想从源码构建用 `docker compose up -d --build --wait`。
+          3. `bash scripts/relay-init.sh` 初始化同栈中转并取回访问令牌。
+          4. 打开 `APP_ORIGIN`，用 `BOOTSTRAP_SECRET` 登录，添加公众号，写第一篇并存入草稿箱。
+
+          镜像：`ghcr.io/k7airos/wx-publish-studio`、`wx-pipeline-worker`、`wx-relay`，均为 amd64 + arm64 多架构，公开可拉，不需要镜像仓库账号。
+
+          完整说明见 [README](https://github.com/k7airos/wx-publish-studio#readme) 与 [docs/self-host.md](https://github.com/k7airos/wx-publish-studio/blob/main/docs/self-host.md)。
+          EOF
           previous="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "$TAG"
+            gh release edit "$TAG" --title "$TAG" --notes-file "$notes"
           elif [ -n "$previous" ]; then
-            gh release create "$TAG" --title "$TAG" --generate-notes --notes-start-tag "$previous"
+            gh release create "$TAG" --title "$TAG" --generate-notes --notes-start-tag "$previous" --notes-file "$notes"
           else
-            gh release create "$TAG" --title "$TAG" --generate-notes
+            gh release create "$TAG" --title "$TAG" --generate-notes --notes-file "$notes"
           fi
