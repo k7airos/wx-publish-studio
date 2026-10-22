@@ -63,7 +63,16 @@ compose=(docker compose)
 
 relay_state="$("${compose[@]}" ps --status running --services 2>/dev/null | grep -x relay || true)"
 if [ -z "$relay_state" ]; then
-  fail "中转容器没有在运行，先执行 docker compose up -d --build --wait。"
+  # 用户可能用 `-p` 起了别的项目名（compose 文件里的 name 只是默认值）。
+  # 跟随正在运行的那一套，避免脚本与实际部署对不上。
+  project="$(docker ps --filter 'label=com.docker.compose.service=relay' --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null | head -n 1)"
+  if [ -n "$project" ]; then
+    compose+=(--project-name "$project")
+    relay_state="$("${compose[@]}" ps --status running --services 2>/dev/null | grep -x relay || true)"
+  fi
+fi
+if [ -z "$relay_state" ]; then
+  fail "中转容器没有在运行，先执行 docker compose up -d --wait（从源码构建则用 docker compose up -d --build --wait）。"
 fi
 
 # 管理员账号与口令。
