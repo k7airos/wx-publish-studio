@@ -6,6 +6,8 @@ COPY . .
 RUN bun run build
 
 FROM oven/bun:1.3.14@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4
+# 封面渲染依赖固定的字体字节（sha256 b76b0433203017ca80401b2ee0dd69350349871c4b19d504c34dbdd80541690a），
+# 版本与基础镜像 digest 都不要改；CI 用同一份包校验这个字节。
 RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk=1:20240730+repack1-1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 # 运行阶段只装运行时依赖，不带 devDependencies。
