@@ -156,7 +156,12 @@ TYPESET_ARTICLE_COVER_FONT_PATH=/usr/share/fonts/opentype/noto/NotoSansCJK-Regul
 bun run test
 ```
 
-`TYPESET_ARTICLE_COVER_FONT_PATH` 指向的文件必须与封面合同**同字节**（宿主可用 `apt install fonts-noto-cjk` 安装同款），缺文件或 hash 不符会直接报错。
+`TYPESET_ARTICLE_COVER_FONT_PATH` 指向的文件必须与封面合同**同字节**，缺文件或 hash 不符会直接报错。合同要求的是 Debian 的 `fonts-noto-cjk=1:20240730+repack1-1` 里的 `NotoSansCJK-Regular.ttc`，SHA256 为 `b76b0433203017ca80401b2ee0dd69350349871c4b19d504c34dbdd80541690a`；在宿主上装同版本即可：
+
+```sh
+sudo apt-get install -y fonts-noto-cjk=1:20240730+repack1-1
+sha256sum /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
+```
 
 ## 封面字体合同
 
