@@ -19,7 +19,7 @@
 
 | 项目 | 当前状态 |
 | --- | --- |
-| 公共镜像 | **还没有**。本仓库不发布 Docker 镜像。应用镜像用 `docker compose build` 自建；**Worker 与微信中转镜像由 compose 直接从两个公开仓库的固定提交构建**（git build context），不需要镜像仓库账号，也不用手工 `docker build`。 |
+| 公共镜像 | **已发布**。本仓库把**应用、Worker、微信中转**三个镜像发布到 GHCR（`ghcr.io/k7airos/…`），**多架构**（linux/amd64 与 linux/arm64 都有），公开可拉，**不需要镜像仓库账号、不需要登录**。默认路径仍可从源码构建；镜像拉不到时 compose 会自动退回源码构建。 |
 | Worker 镜像 | npm 包 `@akairos/pipeline` **不含 `services/` 目录**，只装 npm 包无法启动 Worker。compose 用 `services/cloud-worker/Dockerfile` 从 Pipeline 仓库的固定提交构建；已经自建好镜像时可用 `PIPELINE_WORKER_IMAGE` 覆盖。 |
 | 微信中转 | 默认**随栈一起起**（模式 A），compose 用公开仓库 `bun-wx-server` 的固定提交构建并运行它；也可以指向你自己的中转（模式 B）。该中转已实现 Pipeline 需要的全部 **7 个**微信端点（`cgi-bin/token`、`material/add_material`、`draft/add`、`draft/update`、`draft/get`、`draft/delete`、`draft/batchget`），并支持 `Idempotency-Key` 幂等去重（按调用方隔离，默认保留 24 小时）——「改稿后覆盖同一篇草稿」与「重复提交不产生重复草稿」都可用。 |
 | 正文图片 | 正文图片依赖对象存储（COS 一类）的图片上传与公开 HTTPS 地址，**不是**开箱即用能力。 |
@@ -46,7 +46,7 @@
 - **Docker 与 Compose**：Docker Engine 24+，`docker compose` v2。
 - **PostgreSQL**：由 Compose 内置（`postgres:16-alpine`，固定 digest）。
 - **一个公众号账号**：具备管理员权限，可扫码登录微信公众平台。
-- **一个微信中转服务**：默认**不需要自己准备**——compose 会从公开仓库的固定提交构建并起一个（第 4 个容器）。也可以用你自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约，并注意上面列出的端点缺口。
+- **一个微信中转服务**：默认**不需要自己准备**——compose 会从公开仓库的固定提交构建并起一个（第 4 个容器），也可以直接用已发布的公开镜像。也可以用你自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约，下面「当前状态」列出的 **7 个**微信端点都要实现。
 - **对象存储（COS 一类）**：如果你要发布带图片的正文，需要配置图片上传与公开 HTTPS 地址。
 
 ## 快速开始
@@ -96,6 +96,30 @@ openssl rand -hex 32   # RELAY_JWT_SECRET（同栈中转的签名密钥，模式
 
 ### 3. 一条命令起栈
 
+起栈有两种方式。**推荐方式一**（用已发布镜像，几分钟就好）；想从源码构建、或镜像仓库不可达，就选方式二。
+
+#### 方式一：用已发布镜像（推荐）
+
+在 `.env` 里追加三行，指到公开镜像：
+
+```sh
+APP_IMAGE=ghcr.io/k7airos/wx-publish-studio:0.7.1
+PIPELINE_WORKER_IMAGE=ghcr.io/k7airos/wx-pipeline-worker:0.24.0
+RELAY_IMAGE=ghcr.io/k7airos/wx-relay:0.2.2
+```
+
+然后启动。**注意这条命令不带 `--build`**（带了会从源码重建、并把镜像标签盖成本地构建产物）：
+
+```sh
+docker compose up -d --wait
+```
+
+这三个镜像都是多架构的（linux/amd64 与 linux/arm64 都有），公开可拉，不需要 `docker login`。镜像拉不到时 compose 会**自动退回从源码构建**（方式二），所以这一步失败不会把部署卡死。
+
+> 失败现象：`manifest unknown` / `pull access denied` —— 标签写错了，或镜像还没发布。先跑 `docker manifest inspect ghcr.io/k7airos/wx-publish-studio:0.7.1` 确认标签存在；确认存在却拉不动，就直接用方式二。
+
+#### 方式二：从源码构建
+
 ```sh
 docker compose up -d --build --wait
 ```
@@ -104,7 +128,7 @@ docker compose up -d --build --wait
 
 - 用本地代码构建**应用**镜像；
 - 从公开仓库 `k7airos/zzhub-pipeline` 的固定提交 `4cf5725f…` 构建 **Worker** 镜像（`services/cloud-worker/Dockerfile`）；
-- 从公开仓库 `k7airos/bun-wx-server` 的固定提交 `afec8d96…` 构建**微信中转**镜像；
+- 从公开仓库 `k7airos/bun-wx-server` 的固定提交 `3a9864cb…` 构建**微信中转**镜像；
 - 起四个容器，并等到全部健康。
 
 首次构建要联网（拉基础镜像、克隆上面两个公开仓库），**冷构建大约 10-20 分钟**，其中 Worker 最重（要装 Chromium 与 Noto CJK 字体，镜像约 2.1GB），中转约 250MB，应用约 1GB。有构建缓存时后续启动是秒级。构建完 `docker compose ps` 应当四个服务都是 `healthy`。
@@ -112,7 +136,7 @@ docker compose up -d --build --wait
 > 失败现象：
 > - `git clone` / `could not read from remote repository` —— 构建 Worker 与中转时要拉公开仓库，检查网络、代理与 DNS。
 > - `required variable ... is missing` —— `.env` 少填（见第 2 步）。
-> - `pull access denied` —— 本项目不发布镜像；确认启动命令带 `--build`，并且没有把 `PIPELINE_WORKER_IMAGE` 指到不存在的镜像。
+> - `pull access denied` —— 容器标签指向了一个不存在的镜像；用方式一时确认标签拼写，用方式二时确认启动命令带 `--build`、并且没有把 `PIPELINE_WORKER_IMAGE` 指到不存在的镜像。
 > - 一直卡在 `waiting for ... to be healthy` —— `docker compose logs worker`、`docker compose logs relay` 看具体报错。
 
 ### 4. 初始化同栈中转（拿中转令牌）
@@ -165,14 +189,14 @@ docker compose up -d --wait
 
 1. 在 `.env` 里**就地修改** `ZZHUB_WX_BASE_URL` 那一行，填你的中转地址（例如 `https://relay.example.com`）。**不要把它追加到文件末尾**——下面两行派生变量依赖它的取值。
 2. `RELAY_MODE` 与 `RELAY_REPLICAS` 两行保持原样：它们是派生变量，模式 B 下自动把中转的副本数置 0。
-3. `docker compose up -d --build --wait`。compose **不会**起中转容器，Worker 指向你的地址。
+3. `docker compose up -d --wait`（用已发布镜像时）或 `docker compose up -d --build --wait`（从源码构建时）。compose **不会**起中转容器，Worker 指向你的地址。
 4. `PUBLISHING_RELAY_PAT` 留空，使用者在连接向导里填自己中转的 PAT。
 
-模式 B 下 compose 仍会构建中转镜像（只是不运行），这样不必维护第二套构建分支；不想构建就把它删掉或注释掉 compose 里的 `relay` 服务。
+模式 B 下 compose 仍会准备中转镜像（只是不运行），这样不必维护第二套构建分支；用已发布镜像时它只是拉一下，用源码构建时它会被构建出来；不想准备就把它删掉或注释掉 compose 里的 `relay` 服务。
 
 ### 收尾
 
-改完配置后统一 `docker compose up -d --build --wait` 生效（配置在启动时读取，改环境变量都要重建/重启容器）。
+改完配置后统一重启生效（配置在启动时读取，改环境变量都要重建/重启容器）：用已发布镜像是 `docker compose up -d --wait`，从源码构建是 `docker compose up -d --build --wait`。
 
 ## 必填配置
 
@@ -214,8 +238,9 @@ compose 只检查「有没有填」；**填了但不合规**由应用启动时�
 | `PUBLISHING_OAUTH_*`（可选） | oauth 模式下的身份源配置：issuer、client id/secret、redirect，以及标准发现或三个显式端点（见「接入统一身份（可选）」） | 需要 |
 | `PUBLISHING_COPY_MODE`（可选） | 客户可见文案形态：`neutral`（默认）/ `hosted` | 需要 |
 | `APP_PORT`（可选） | 宿主端口，默认 `18889` | 需要 |
-| `PIPELINE_WORKER_IMAGE`（可选） | 覆盖 Worker 镜像引用；已自建镜像时填它 | 需要（改镜像要重建容器） |
-| `RELAY_IMAGE`（可选） | 覆盖中转镜像引用，默认 `wx-relay:0.2.2` | 需要 |
+| `APP_IMAGE`（可选） | 覆盖应用镜像引用，默认 `wx-publish-studio:0.7.1`。用已发布镜像时填 `ghcr.io/k7airos/wx-publish-studio:0.7.1` | 需要（改镜像要重建容器） |
+| `PIPELINE_WORKER_IMAGE`（可选） | 覆盖 Worker 镜像引用，默认 `wx-pipeline-worker:0.24.0`。用已发布镜像时填 `ghcr.io/k7airos/wx-pipeline-worker:0.24.0` | 需要（改镜像要重建容器） |
+| `RELAY_IMAGE`（可选） | 覆盖中转镜像引用，默认 `wx-relay:0.2.2`。用已发布镜像时填 `ghcr.io/k7airos/wx-relay:0.2.2` | 需要 |
 | `RELAY_ADMIN_USERNAME` / `RELAY_ADMIN_PASSWORD`（可选） | 同栈中转的管理员账号，供 `scripts/relay-init.sh` 使用 | 不需要（脚本自己读写 `.env`） |
 
 > `RELAY_MODE` 与 `RELAY_REPLICAS` 是**派生变量**，由 `.env` 里的 `ZZHUB_WX_BASE_URL` 推导（留空 = 模式 A，填写 = 模式 B）。请保留它们，并保持它们位于 `ZZHUB_WX_BASE_URL` 之后。
@@ -246,16 +271,26 @@ compose 只检查「有没有填」；**填了但不合规**由应用启动时�
 
 **备份要包含**：`app-data`、`database-data`、`worker-data`、`relay-data` 四个卷，以及 `CREDENTIAL_ENCRYPTION_KEY`。少任何一项，恢复后都无法完整还原。
 
-**升级**：本项目不发布镜像，升级 = 拉新代码 + 重新构建：
+**升级**：两种路径二选一。
+
+用已发布镜像（快）：
+
+```sh
+git pull
+docker compose up -d --wait
+```
+
+用源码构建：
 
 ```sh
 git pull
 docker compose up -d --build --wait
 ```
 
-> Worker 与中转镜像来自两个公开仓库的固定提交，compose 会用构建缓存复用之前的层；缓存失效时按「快速开始」第 3 步的耗时估计。
+> 源码构建路径下，Worker 与中转镜像来自两个公开仓库的固定提交，compose 会用构建缓存复用之前的层；缓存失效时按「快速开始」第 3 步的耗时估计。
 
-> **不要用 `docker compose pull`**：本仓库不发布镜像，`pull` 会直接报 `pull access denied`。
+> **用了已发布镜像就别加 `--build`**：加了会用本地源码重建，并覆盖掉镜像标签，之后 `docker compose pull` 就拉不到那个标签了。
+
 > 如果你把 `APP_IMAGE` 指向了**自己的** registry（`APP_IMAGE=registry.example.com/wx-publish-studio:1.2.3`），那就改成先推再拉：
 > ```sh
 > docker build -t registry.example.com/wx-publish-studio:1.2.3 .
@@ -283,10 +318,10 @@ docker compose up -d --build --wait
 | 现象 | 排查方向 |
 | --- | --- |
 | `docker compose` 报缺少变量 | compose 在缺必填项时会直接报错并指出变量名；补齐 `.env` 后重新执行。模式 A 缺的是 `RELAY_JWT_SECRET`。 |
-| `docker compose pull` 报 `pull access denied` | 本项目不发布镜像，改用 `docker compose up -d --build --wait`。 |
+| `docker compose pull` 报 `pull access denied` | 镜像标签指向了一个不存在的镜像（多半是 `.env` 里手抄错了标签）。用 `docker manifest inspect <标签>` 确认标签存在；不存在就改回 compose 里的默认值走源码构建。 |
 | 构建时卡在拉公开仓库 | Worker 与中转镜像从 GitHub 的公开仓库以 git context 构建，检查网络、代理与 DNS。 |
 | 登录总是失败 | `APP_ORIGIN` 与浏览器地址栏的 origin 必须完全一致（协议、域名、端口）。SSH 隧道换端口后要同步改 `.env` 的 `APP_PORT` 与 `APP_ORIGIN`。 |
-| Worker 镜像拉不到 | `PIPELINE_WORKER_IMAGE` 只能指向你本地已构建的镜像；不填就用 compose 从公开仓库现建。 |
+| Worker 镜像拉不到 | `PIPELINE_WORKER_IMAGE` 要么指向公开镜像（`ghcr.io/k7airos/wx-pipeline-worker:0.24.0`），要么指向你本地已构建的镜像；不填就用 compose 从公开仓库现建。 |
 | Worker 起不来 / 一直不健康 | `docker compose logs worker`：先看是不是连不上 `ZZHUB_WX_BASE_URL`，再看中转是否已启动。 |
 | 中转起不来 / 一直不健康 | `docker compose logs relay`：模式 A 下先确认 `.env` 里有 `RELAY_JWT_SECRET`。 |
 | `scripts/relay-init.sh` 报登录失败 | `.env` 的 `RELAY_ADMIN_PASSWORD` 与中转里已有管理员的口令不一致；清掉 `relay-data` 卷重新初始化，或改回原口令。 |

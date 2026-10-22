@@ -75,7 +75,7 @@ services:
     # 微信中转：同栈自带（模式 A）或使用外部中转（模式 B）。镜像同样由 compose 从公开仓库的固定提交构建。
     image: ${RELAY_IMAGE:-wx-relay:0.2.2}
     build:
-      context: https://github.com/k7airos/bun-wx-server.git#faa8913e51790506c27c2f8a886c4ec8be583041
+      context: https://github.com/k7airos/bun-wx-server.git#3a9864cbb8971ca676259d05f5f937d1f2e842bc
       dockerfile: Dockerfile
     restart: unless-stopped
     # 模式 B（.env 里填了 ZZHUB_WX_BASE_URL）由 .env 的派生变量把副本数置 0，中转不启动。

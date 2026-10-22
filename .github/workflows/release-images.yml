@@ -35,20 +35,23 @@ jobs:
         include:
           - name: app
             image: wx-publish-studio
+            version: ""
             repository: ""
             ref: ""
             context: "."
             dockerfile: Dockerfile
           - name: worker
             image: wx-pipeline-worker
+            version: "0.24.0"
             repository: k7airos/zzhub-pipeline
             ref: "4cf5725f35758fa5fada8786cb57cd9960388c7f"
             context: sources/worker
             dockerfile: services/cloud-worker/Dockerfile
           - name: relay
             image: wx-relay
+            version: "0.2.2"
             repository: k7airos/bun-wx-server
-            ref: "faa8913e51790506c27c2f8a886c4ec8be583041"
+            ref: "3a9864cbb8971ca676259d05f5f937d1f2e842bc"
             context: sources/relay
             dockerfile: Dockerfile
     steps:
@@ -102,17 +105,25 @@ jobs:
         id: tags
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          COMPONENT_VERSION: ${{ matrix.version }}
           IMAGE: ${{ matrix.image }}
           GHCR: ${{ env.REGISTRY }}/${{ env.OWNER }}
           DOCKERHUB: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          tags="$GHCR/$IMAGE:$VERSION" "$GHCR/$IMAGE:latest"
+          tags=("$GHCR/$IMAGE:$VERSION" "$GHCR/$IMAGE:latest")
+          # 组件自带版本号（Worker / 中转）与发布版本不同时，两个标签都给，避免只跟发布版本而丢组件版本。
+          if [ -n "$COMPONENT_VERSION" ] && [ "$COMPONENT_VERSION" != "$VERSION" ]; then
+            tags+=("$GHCR/$IMAGE:$COMPONENT_VERSION")
+          fi
           if [ -n "$DOCKERHUB" ]; then
-            tags="$tags" "$DOCKERHUB/$IMAGE:$VERSION" "$DOCKERHUB/$IMAGE:latest"
+            tags+=("$DOCKERHUB/$IMAGE:$VERSION" "$DOCKERHUB/$IMAGE:latest")
+            if [ -n "$COMPONENT_VERSION" ] && [ "$COMPONENT_VERSION" != "$VERSION" ]; then
+              tags+=("$DOCKERHUB/$IMAGE:$COMPONENT_VERSION")
+            fi
           fi
           {
             echo "list<<EOF"
-            for tag in $tags; do echo "$tag"; done
+            for tag in "${tags[@]}"; do echo "$tag"; done
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

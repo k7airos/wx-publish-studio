@@ -6,19 +6,23 @@
 
 - Docker Engine 24+ 与 `docker compose` v2。
 - 一个具备管理员权限的微信公众号（能扫码登录微信公众平台）。
-- 磁盘留够：首次构建要产出应用镜像（约 1GB）、Worker 镜像（约 2.1GB）与中转镜像（约 250MB），加上构建缓存建议预留 10GB 以上。
+- 磁盘留够：走源码构建要产出应用镜像（约 1GB）、Worker 镜像（约 2.1GB）与中转镜像（约 250MB），加上构建缓存建议预留 10GB 以上；直接用已发布镜像则不需要构建缓存，空间占用小得多。
 - 如果要发布带图片的正文，还需要对象存储（COS 一类）与公开 HTTPS 地址。
 
 微信中转**默认随栈一起起**（模式 A）：compose 从公开仓库 `bun-wx-server` 的固定提交构建并运行它，不需要自己准备中转服务。也可以用自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约；随栈中转已实现 Pipeline 需要的全部 7 个微信端点并支持 `Idempotency-Key` 幂等去重。
 
-本仓库不发布 Docker 镜像；应用、Worker 与中转三个镜像都由 `docker compose build` 在本机构建。
+本仓库**发布** Docker 镜像到 GHCR：应用、Worker 与中转三个镜像都在 `ghcr.io/k7airos/…` 下公开可拉，**多架构**（linux/amd64 与 linux/arm64 都有），不需要镜像仓库账号、不需要 `docker login`。用已发布镜像是最快的部署路径；也可以全部由 `docker compose build` 在本机构建（不需要任何镜像仓库账号），compose 在镜像拉不到时会自动退回本地构建。
 
 ## 首次启动
 
 1. `cp .env.example .env`，生成独立随机值填入 `POSTGRES_PASSWORD`、`CREDENTIAL_ENCRYPTION_KEY`、`PIPELINE_WORKER_TOKEN`、`RELAY_JWT_SECRET`，以及 bootstrap 模式至少 32 字符的 `BOOTSTRAP_SECRET`。建议 `openssl rand -hex 32`；数据库密码用十六进制，避免 URL 编码歧义。
 2. 明确 `APP_ORIGIN`。SSH 转发使用 `http://127.0.0.1:18889`，浏览器实际访问端口须一致；独立 HTTPS 入口填完整 origin。只接受 HTTPS 或 HTTP loopback，不接受路径、userinfo 或通配 origin。Cookie 的 Secure 由此固定配置决定，不信任 `X-Forwarded-*`。应用容器内部监听 `0.0.0.0`，宿主仍只暴露 `127.0.0.1`，数据库、Worker 与同栈中转都不映射端口。
 3. **保持 `ZZHUB_WX_BASE_URL` 留空**（模式 A：同栈自带中转）。填上地址就是模式 B（外部中转），此时 compose 不起中转容器、Worker 指向你的地址。注意 `.env` 里的 `RELAY_MODE` 与 `RELAY_REPLICAS` 是派生变量，依赖 `ZZHUB_WX_BASE_URL` 的取值，必须留在它后面、且不要追加新的 `ZZHUB_WX_BASE_URL` 行到文件末尾。
-4. `docker compose up -d --build --wait`。应用镜像由本地代码构建；Worker 与中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建，**不需要任何镜像仓库账号**。冷构建约 10-20 分钟（Worker 最重，要装 Chromium 与 Noto CJK 字体），有缓存时是秒级。构建完成后 `docker compose ps` 应显示四个服务都是 `healthy`。
+4. 起栈，二选一：
+   - **用已发布镜像（快）**：在 `.env` 里追加 `APP_IMAGE=ghcr.io/k7airos/wx-publish-studio:0.7.1`、`PIPELINE_WORKER_IMAGE=ghcr.io/k7airos/wx-pipeline-worker:0.24.0`、`RELAY_IMAGE=ghcr.io/k7airos/wx-relay:0.2.2`，然后跑 `docker compose up -d --wait`（**不带 `--build`**）。
+   - **从源码构建**：跑 `docker compose up -d --build --wait`。应用镜像由本地代码构建；Worker 与中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建，**不需要任何镜像仓库账号**。冷构建约 10-20 分钟（Worker 最重，要装 Chromium 与 Noto CJK 字体），有缓存时是秒级。
+
+   两种方式完成后 `docker compose ps` 都应显示四个服务都是 `healthy`。
 5. 初始化同栈中转：模式 A 下中转刚起来时还没有管理员，`bash scripts/relay-init.sh` 会创建管理员、生成带 `wx` scope 的 PAT 并写回 `.env` 的 `PUBLISHING_RELAY_PAT`，随后再跑一次 `docker compose up -d --wait` 让应用加载令牌。模式 B 下这一步跳过，在界面里填你自己中转的 PAT。
 6. 打开配置的 origin，按所选模式使用访问口令。修改本机端口时同步 `.env` 的 `APP_PORT` 与 `APP_ORIGIN`。
 
@@ -26,7 +30,7 @@
 
 > `BOOTSTRAP_SECRET` 在 compose 里是硬性必填（compose 不做条件判断）。用 `PUBLISHING_AUTH_MODE=oauth` 且不需要口令登录时，也要给出一个占位值；应用本身只在 bootstrap 模式下校验它的长度。
 
-> Worker 镜像可以用 `PIPELINE_WORKER_IMAGE` 覆盖成自己已经构建好的镜像；覆盖后请用**不带 `--build`** 的 `docker compose up -d --wait` 启动，否则 compose 会用 git context 重建并覆盖这个 tag。
+> 三个镜像都可以用环境变量覆盖成自己已经构建好或已经推好的镜像（`APP_IMAGE`、`PIPELINE_WORKER_IMAGE`、`RELAY_IMAGE`）；覆盖成**公开镜像**或**自己的 registry 镜像**后，请用**不带 `--build`** 的 `docker compose up -d --wait` 启动，否则 compose 会用 git context / 本地源码重建并覆盖这个 tag。
 
 ## 配置公众号
 
