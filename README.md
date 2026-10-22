@@ -248,7 +248,7 @@ compose 只检查「有没有填」；**填了但不合规**由应用启动时�
 - **两种模式**：**模式 A**（默认）由 compose 起第 4 个容器 `relay`，地址是 `http://relay:3001`，只在本机网络内可达；**模式 B** 指向你自己的中转地址，compose 不起中转容器。
 - **中转服务从哪来**：模式 A 用已发布的 `ghcr.io/k7airos/wx-relay`（也可让 compose 从公开仓库 `bun-wx-server` 的固定提交现场构建）；模式 B 可以自己实现（契约见 `/api/v1/wx/*`）。
 - **PAT 的 scope**：PAT 是中转服务的访问令牌，用来代表你调用中转接口。它由中转服务签发，与微信 AppID/AppSecret 是两回事。`bun-wx-server` 的 scope 里 `wx` 对应 `/api/v1/wx/`。
-- **模式 A 怎么拿 PAT**：跑 `bash scripts/relay-init.sh`，它会创建管理员、生成带 `wx` scope 的 PAT 并写回 `.env` 的 `PUBLISHING_RELAY_PAT`。
+- **模式 A 怎么拿 PAT**：跑 `bash scripts/relay-init.sh`，它会创建管理员、生成带 `wx` scope 的 PAT 并写回 `.env` 的 `PUBLISHING_RELAY_PAT`。重复跑是安全的：已有的令牌若仍然有效就直接沿用；需要换新令牌时，旧的同名令牌会被吊销，不会越积越多。
 - **IP 白名单**：在公众号后台的「API IP 白名单」里，填**实际调用微信的那个中转的出口公网 IP**。模式 A（同栈自带中转）下中转就在这台服务器上，出口 IP 就是**这台服务器的公网 IP**；模式 B 下才是**你自己中转服务的出口 IP**。部署配置了 `PUBLISHING_WX_WHITELIST_IP` 时界面会直接显示该值，否则请在连接向导里自行填写。白名单生效有等待期，第一次存入草稿箱时才会真正验证。
 - **中转覆盖范围**：随栈的中转已实现 Pipeline 需要的全部 7 个微信端点，并支持 `Idempotency-Key` 幂等去重（同一把 PAT 下同 key 的重复请求不会重复写微信，直接返回首次结果；默认保留 24 小时，可用 `WX_IDEMPOTENCY_TTL_SECONDS` 调整）。模式 B 用自己的中转时，请自行确认它实现了同样的契约。
 
