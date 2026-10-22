@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <rect width="3350" height="1000" fill="#F5F0E6"/>
+  <!-- 报头双线与底线 -->
+  <rect x="200" y="100" width="1950" height="12" fill="#161616"/><rect x="200" y="126" width="1950" height="3" fill="#161616"/>
+  <rect x="200" y="878" width="1950" height="3" fill="#161616"/>
+  <rect x="200" y="900" width="140" height="10" fill="#B8862F"/>
+  <!-- 方图：墨黑底与金色同心弧 -->
+  <rect x="2350" width="1000" height="1000" fill="#161616"/>
+  <g fill="none" stroke="#C9A55C">
+    <circle cx="3350" cy="1000" r="220" stroke-width="10"/><circle cx="3350" cy="1000" r="360" stroke-width="6" opacity=".8"/>
+    <circle cx="3350" cy="1000" r="500" stroke-width="4" opacity=".6"/><circle cx="3350" cy="1000" r="640" stroke-width="3" opacity=".45"/>
+    <circle cx="3350" cy="1000" r="780" stroke-width="2" opacity=".3"/><circle cx="3350" cy="1000" r="920" stroke-width="2" opacity=".2"/>
+  </g>
+  <circle cx="2560" cy="210" r="34" fill="#C9A55C"/>
+  <rect x="2526" y="290" width="160" height="8" fill="#F5F0E6" opacity=".85"/><rect x="2526" y="316" width="96" height="8" fill="#F5F0E6" opacity=".5"/>
+</svg>

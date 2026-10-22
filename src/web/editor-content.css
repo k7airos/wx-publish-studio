@@ -1,0 +1,71 @@
+/* myno 编辑器正文区：从旧样式表原样保留，修正首个标题外边距等编辑器细节。 */
+.myno-root {
+  min-height: 400px;
+  color: var(--ink-2);
+  font-size: 16px;
+  line-height: 1.84;
+}
+
+.myno-root .milkdown {
+  box-shadow: none;
+  background: transparent;
+}
+
+.myno-root .milkdown .editor {
+  padding: 0;
+}
+
+/* 彻底消除首个标题在未获焦点、光标聚焦与激活行内工具栏时的外边距跳动 */
+.myno-root .milkdown .editor > h1:first-child,
+.myno-root .milkdown .editor > h2:first-child,
+.myno-root .milkdown .editor > h3:first-child,
+.myno-root .milkdown .editor > h4:first-child,
+.myno-root .milkdown .editor > h5:first-child,
+.myno-root .milkdown .editor > h6:first-child,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + h1,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + h2,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + h3,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + h4,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + h5,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + h6,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + [contenteditable="false"] + h1,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + [contenteditable="false"] + h2,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + [contenteditable="false"] + h3,
+.myno-root .milkdown .editor > [contenteditable="false"]:first-child + [contenteditable="false"] + h4,
+.myno-root .milkdown .editor > .prosemirror-virtual-cursor:first-child + h1,
+.myno-root .milkdown .editor > .prosemirror-virtual-cursor:first-child + h2,
+.myno-root .milkdown .editor > .prosemirror-virtual-cursor:first-child + h3,
+.myno-root .milkdown .editor > .prosemirror-virtual-cursor:first-child + h4,
+.myno-root .milkdown .editor > .prosemirror-virtual-cursor:first-child + h5,
+.myno-root .milkdown .editor > .prosemirror-virtual-cursor:first-child + h6,
+.myno-root .milkdown .editor > .ProseMirror-widget:first-child + h1,
+.myno-root .milkdown .editor > .ProseMirror-widget:first-child + h2,
+.myno-root .milkdown .editor > .ProseMirror-widget:first-child + h3,
+.myno-root .milkdown .editor > .ProseMirror-widget:first-child + h4,
+.myno-root .milkdown .editor > .ProseMirror-widget:first-child + h5,
+.myno-root .milkdown .editor > .ProseMirror-widget:first-child + h6,
+.myno-root .milkdown .editor > :nth-child(1 of :not([contenteditable="false"])):is(h1, h2, h3, h4, h5, h6),
+.myno-root .milkdown .editor > :nth-child(1 of :not(.ProseMirror-widget, .prosemirror-virtual-cursor)):is(h1, h2, h3, h4, h5, h6) {
+  margin-top: 0.25em !important;
+}
+
+.inspector-side-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+

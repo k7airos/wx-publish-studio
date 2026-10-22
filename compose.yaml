@@ -1,0 +1,83 @@
+name: wx-publish-studio
+services:
+  app:
+    build: .
+    image: ${APP_IMAGE:-wx-publish-studio:0.7.1}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-18889}:18889"
+    environment:
+      DATABASE_URL: postgres://studio:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/studio
+      BOOTSTRAP_SECRET: ${BOOTSTRAP_SECRET:?Set BOOTSTRAP_SECRET (at least 32 characters)}
+      PUBLISHING_AUTH_MODE: ${PUBLISHING_AUTH_MODE:-bootstrap}
+      PUBLISHING_OAUTH_ISSUER: ${PUBLISHING_OAUTH_ISSUER:-}
+      PUBLISHING_OAUTH_PORTAL_URL: ${PUBLISHING_OAUTH_PORTAL_URL:-}
+      PUBLISHING_OAUTH_BASE_URL: ${PUBLISHING_OAUTH_BASE_URL:-}
+      PUBLISHING_OAUTH_CLIENT_ID: ${PUBLISHING_OAUTH_CLIENT_ID:-}
+      PUBLISHING_OAUTH_CLIENT_SECRET: ${PUBLISHING_OAUTH_CLIENT_SECRET:-}
+      PUBLISHING_OAUTH_REDIRECT_URI: ${PUBLISHING_OAUTH_REDIRECT_URI:-}
+      PUBLISHING_SELF_PROVISION: ${PUBLISHING_SELF_PROVISION:-0}
+      # 客户可见文案的部署形态：neutral（默认，开源自托管）/ hosted（线上托管部署的原有文案）。
+      PUBLISHING_COPY_MODE: ${PUBLISHING_COPY_MODE:-neutral}
+      APP_ORIGIN: ${APP_ORIGIN:?Set the trusted browser origin}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:?Set a 64-hex credential encryption key}
+      PIPELINE_WORKER_URL: http://worker:18887
+      PIPELINE_WORKER_TOKEN: ${PIPELINE_WORKER_TOKEN:?Set PIPELINE_WORKER_TOKEN}
+      PUBLISHING_DATA_DIR: /data
+      PUBLISHING_BODY_IMAGE_SOURCE_ORIGIN: ${PUBLISHING_BODY_IMAGE_SOURCE_ORIGIN:-}
+      PUBLISHING_BODY_IMAGE_SOURCE_PREFIX: ${PUBLISHING_BODY_IMAGE_SOURCE_PREFIX:-}
+      PUBLISHING_BODY_IMAGE_OWNER_SOURCES: ${PUBLISHING_BODY_IMAGE_OWNER_SOURCES:-}
+      # Optional service-held relay token; without it the UI asks for the user's own PAT.
+      PUBLISHING_RELAY_PAT: ${PUBLISHING_RELAY_PAT:-}
+      # Optional WeChat API whitelist egress IP; without it the UI asks the user to enter it.
+      PUBLISHING_WX_WHITELIST_IP: ${PUBLISHING_WX_WHITELIST_IP:-}
+    volumes:
+      - app-data:/data
+    networks: [studio]
+    depends_on:
+      db: { condition: service_healthy }
+      worker: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:18889/api/health').then(r=>process.exit(r.ok?0:1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+  worker:
+    image: ${PIPELINE_WORKER_IMAGE:?Set an immutable locally available Worker image}
+    restart: unless-stopped
+    environment:
+      PIPELINE_WORKER_TOKEN: ${PIPELINE_WORKER_TOKEN}
+      PIPELINE_WORKER_HOST: 0.0.0.0
+      PIPELINE_WORKER_PRIVATE_NETWORK: "1"
+      PIPELINE_CONFIG_FILE: /run/config/pipeline.json
+      ZZHUB_WX_BASE_URL: ${ZZHUB_WX_BASE_URL:?Set the compatible WeChat relay URL}
+    volumes:
+      - ./config/pipeline.json:/run/config/pipeline.json:ro
+      - worker-data:/data
+    networks: [studio]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:18887/health',{headers:{Authorization:'Bearer '+process.env.PIPELINE_WORKER_TOKEN}}).then(r=>process.exit(r.ok?0:1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+  db:
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: studio
+      POSTGRES_DB: studio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - database-data:/var/lib/postgresql/data
+    networks: [studio]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studio -d studio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+networks:
+  studio: {}
+volumes:
+  app-data: {}
+  database-data: {}
+  worker-data: {}

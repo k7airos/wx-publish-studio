@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B1027"/><stop offset="1" stop-color="#172554"/></linearGradient>
+    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#67E8F9" stroke-width="1.5" opacity=".14"/></pattern>
+  </defs>
+  <rect width="3350" height="1000" fill="url(#bg)"/>
+  <g fill="#67E8F9"><rect x="200" y="100" width="90" height="10"/><circle cx="320" cy="105" r="5"/><circle cx="344" cy="105" r="5" opacity=".5"/></g>
+  <!-- 方图：网格、电路线与节点 -->
+  <rect x="2350" width="1000" height="1000" fill="url(#grid)"/>
+  <circle cx="2850" cy="500" r="280" fill="none" stroke="#67E8F9" stroke-width="4" opacity=".55"/>
+  <circle cx="2850" cy="500" r="190" fill="none" stroke="#67E8F9" stroke-width="2" opacity=".3" stroke-dasharray="14 12"/>
+  <g fill="none" stroke="#67E8F9" stroke-width="5" stroke-linecap="round">
+    <path d="M2850 500H3050V300H3250"/><path d="M2850 500V720H2600V860"/><path d="M2850 500L2650 300H2500"/>
+  </g>
+  <g fill="#0B1027" stroke="#67E8F9" stroke-width="5"><circle cx="3250" cy="300" r="18"/><circle cx="2600" cy="860" r="18"/><circle cx="2500" cy="300" r="18"/></g>
+  <circle cx="2850" cy="500" r="54" fill="#67E8F9"/><circle cx="2850" cy="500" r="96" fill="#67E8F9" opacity=".18"/>
+</svg>

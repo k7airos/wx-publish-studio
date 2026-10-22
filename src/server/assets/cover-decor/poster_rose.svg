@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <defs><clipPath id="left"><rect width="2350" height="1000"/></clipPath></defs>
+  <rect width="3350" height="1000" fill="#FBEFF1"/>
+  <g clip-path="url(#left)">
+    <!-- 层叠拱门：右侧浅色实心，左侧只描边 -->
+    <path d="M1470 1000V520A420 420 0 0 1 2310 520V1000Z" fill="#F6DDE3"/>
+    <path d="M1600 1000V560A290 290 0 0 1 2180 560V1000Z" fill="#F1CBD5"/>
+    <path d="M1730 1000V600A160 160 0 0 1 2050 600V1000Z" fill="#E9B4C2"/>
+    <g fill="none" stroke="#C8607C" stroke-width="3" opacity=".35">
+      <path d="M40 1000V560A260 260 0 0 1 560 560V1000"/><path d="M130 1000V590A170 170 0 0 1 470 590V1000"/>
+    </g>
+    <rect x="56" y="56" width="2238" height="888" rx="56" fill="none" stroke="#C8607C" stroke-width="3.5" opacity=".6"/>
+    <rect x="84" y="84" width="2182" height="832" rx="34" fill="none" stroke="#C8607C" stroke-width="1.5" opacity=".35"/>
+    <g fill="#7A2A44">
+      <path d="M170 170l16 40 40 16-40 16-16 40-16-40-40-16 40-16z"/>
+      <path d="M2180 170l10 26 26 10-26 10-10 26-10-26-26-10 26-10z" opacity=".6"/>
+      <path d="M2180 830l10 26 26 10-26 10-10 26-10-26-26-10 26-10z" opacity=".45"/>
+    </g>
+    <path d="M360 130H1400" stroke="#C8607C" stroke-width="2" opacity=".35"/>
+    <path d="M1175 880" stroke="#C8607C"/>
+  </g>
+  <rect x="2350" width="1000" height="1000" fill="#F6DDE3"/>
+</svg>

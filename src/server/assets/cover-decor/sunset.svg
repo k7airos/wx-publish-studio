@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <defs>
+    <linearGradient id="sq" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE3C7"/><stop offset="1" stop-color="#FFC59E"/></linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB347"/><stop offset="1" stop-color="#F0603A"/></linearGradient>
+    <clipPath id="sunclip"><circle cx="2850" cy="560" r="300"/></clipPath>
+  </defs>
+  <rect width="3350" height="1000" fill="#FFF4E4"/>
+  <g fill="#F0603A"><rect x="200" y="868" width="110" height="16"/><rect x="200" y="896" width="54" height="16" opacity=".45"/></g>
+  <!-- 方图：复古条纹落日 -->
+  <rect x="2350" width="1000" height="1000" fill="url(#sq)"/>
+  <g clip-path="url(#sunclip)">
+    <rect x="2550" y="260" width="600" height="600" fill="url(#sun)"/>
+    <g fill="#FFD3AE"><rect x="2550" y="590" width="600" height="14"/><rect x="2550" y="640" width="600" height="20"/><rect x="2550" y="696" width="600" height="28"/><rect x="2550" y="760" width="600" height="38"/></g>
+  </g>
+  <rect x="2350" y="860" width="1000" height="140" fill="#E8875B"/>
+  <path d="M2350 860H3350" stroke="#4A2C1A" stroke-width="4" opacity=".35"/>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <rect width="3350" height="1000" fill="#FBEFF1"/>
+  <path d="M200 112H2150" stroke="#C8607C" stroke-width="2" opacity=".4"/>
+  <path d="M2150 98L2164 112L2150 126L2136 112Z" fill="#C8607C"/>
+  <!-- 方图：层叠拱门与星芒 -->
+  <rect x="2350" width="1000" height="1000" fill="#F6DDE3"/>
+  <path d="M2510 1000V520A340 340 0 0 1 3190 520V1000Z" fill="#E8A9B8"/>
+  <path d="M2600 1000V560A250 250 0 0 1 3100 560V1000Z" fill="#C8607C"/>
+  <path d="M2690 1000V600A160 160 0 0 1 3010 600V1000Z" fill="#7A2A44"/>
+  <g fill="#7A2A44"><path d="M2520 200L2534 236L2570 250L2534 264L2520 300L2506 264L2470 250L2506 236Z"/><path d="M3200 140L3208 162L3230 170L3208 178L3200 200L3192 178L3170 170L3192 162Z" opacity=".6"/></g>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <defs>
+    <clipPath id="left"><rect width="2350" height="1000"/></clipPath>
+    <clipPath id="sun"><circle cx="1930" cy="520" r="400"/></clipPath>
+    <linearGradient id="sunfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFEBD0"/><stop offset="1" stop-color="#FFD7B0"/></linearGradient>
+  </defs>
+  <rect width="3350" height="1000" fill="#FFF4E4"/>
+  <g clip-path="url(#left)">
+    <g clip-path="url(#sun)">
+      <rect x="1500" y="90" width="860" height="860" fill="url(#sunfill)"/>
+      <g fill="#FFF4E4"><rect x="1500" y="600" width="860" height="12"/><rect x="1500" y="650" width="860" height="18"/><rect x="1500" y="706" width="860" height="26"/><rect x="1500" y="770" width="860" height="36"/><rect x="1500" y="846" width="860" height="48"/></g>
+    </g>
+    <rect x="0" y="940" width="2350" height="60" fill="#F0603A"/>
+    <rect x="0" y="916" width="2350" height="10" fill="#F0603A" opacity=".45"/>
+    <rect x="56" y="56" width="2238" height="840" fill="none" stroke="#4A2C1A" stroke-width="3" opacity=".5"/>
+    <g fill="#F0603A"><rect x="40" y="40" width="32" height="32"/><rect x="2278" y="40" width="32" height="32"/></g>
+    <g fill="#F0603A"><rect x="130" y="112" width="110" height="16"/><rect x="130" y="140" width="54" height="16" opacity=".45"/></g>
+    <path d="M300 120H1400" stroke="#4A2C1A" stroke-width="2" opacity=".25"/>
+  </g>
+  <rect x="2350" width="1000" height="1000" fill="#FFE3C7"/>
+</svg>

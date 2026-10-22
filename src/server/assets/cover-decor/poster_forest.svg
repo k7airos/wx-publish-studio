@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0D3A2B"/><stop offset="1" stop-color="#145040"/></linearGradient>
+    <clipPath id="left"><rect width="2350" height="1000"/></clipPath>
+  </defs>
+  <rect width="3350" height="1000" fill="url(#sky)"/>
+  <g clip-path="url(#left)">
+    <!-- 月轮与光环 -->
+    <circle cx="1860" cy="400" r="300" fill="#15503D"/>
+    <circle cx="1860" cy="400" r="300" fill="none" stroke="#EFE6C8" stroke-width="3" opacity=".25"/>
+    <circle cx="1860" cy="400" r="410" fill="none" stroke="#EFE6C8" stroke-width="2" opacity=".14"/>
+    <circle cx="1860" cy="400" r="520" fill="none" stroke="#EFE6C8" stroke-width="2" opacity=".08"/>
+    <g fill="#EFE6C8"><circle cx="360" cy="260" r="5" opacity=".7"/><circle cx="1160" cy="190" r="4" opacity=".6"/><circle cx="2150" cy="210" r="6" opacity=".7"/><circle cx="640" cy="170" r="3" opacity=".5"/><circle cx="1480" cy="260" r="4" opacity=".5"/></g>
+    <!-- 层叠山丘（低于标题区） -->
+    <path d="M0 860C300 800 560 820 860 860S1480 900 1800 840 2200 800 2350 830V1000H0Z" fill="#1B5C45"/>
+    <path d="M0 900C360 860 700 890 1060 920S1760 940 2120 890 2300 880 2350 890V1000H0Z" fill="#2E7D5B"/>
+    <path d="M0 950C400 930 820 950 1240 970S2000 975 2350 940V1000H0Z" fill="#8BBF9F" opacity=".85"/>
+    <rect x="56" y="56" width="2238" height="888" fill="none" stroke="#EFE6C8" stroke-width="3" opacity=".4"/>
+    <g fill="#EFE6C8"><rect x="130" y="112" width="120" height="16"/><rect x="130" y="142" width="64" height="16" opacity=".5"/></g>
+    <path d="M300 120H1500" stroke="#EFE6C8" stroke-width="2" opacity=".25"/>
+  </g>
+  <rect x="2350" width="1000" height="1000" fill="#0B3226"/>
+</svg>

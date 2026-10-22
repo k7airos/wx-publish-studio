@@ -1,0 +1,8 @@
+.git
+node_modules
+dist
+.env*
+config/accounts.json
+data
+tests
+*.log

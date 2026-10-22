@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B1027"/><stop offset="1" stop-color="#162A63"/></linearGradient>
+    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#67E8F9" stroke-width="1.4" opacity=".13"/></pattern>
+    <clipPath id="left"><rect width="2350" height="1000"/></clipPath>
+  </defs>
+  <rect width="3350" height="1000" fill="url(#bg)"/>
+  <g clip-path="url(#left)">
+    <rect width="2350" height="1000" fill="url(#grid)"/>
+    <g fill="none" stroke="#67E8F9"><circle cx="1900" cy="500" r="330" stroke-width="3" opacity=".2"/><circle cx="1900" cy="500" r="220" stroke-width="2" opacity=".18" stroke-dasharray="14 14"/><circle cx="1900" cy="500" r="440" stroke-width="2" opacity=".1"/></g>
+    <!-- 顶部与底部电路走线 -->
+    <g fill="none" stroke="#67E8F9" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".7">
+      <path d="M130 130H560L620 190H1240"/><path d="M1700 130H2100L2150 80H2230"/>
+      <path d="M130 870H700L760 810H1420"/><path d="M1800 870H2230"/>
+    </g>
+    <g fill="#0B1027" stroke="#67E8F9" stroke-width="5"><circle cx="1240" cy="190" r="14"/><circle cx="2230" cy="80" r="14"/><circle cx="1420" cy="810" r="14"/><circle cx="2230" cy="870" r="14"/></g>
+    <g fill="#67E8F9"><rect x="130" y="204" width="90" height="10"/><circle cx="250" cy="209" r="5"/><circle cx="274" cy="209" r="5" opacity=".5"/></g>
+    <g fill="none" stroke="#67E8F9" stroke-width="6" opacity=".8" stroke-linecap="square">
+      <path d="M56 200V56H200"/><path d="M2150 56H2294V200"/><path d="M56 800V944H200"/><path d="M2150 944H2294V800"/>
+    </g>
+  </g>
+  <rect x="2350" width="1000" height="1000" fill="#0E1A42"/>
+</svg>

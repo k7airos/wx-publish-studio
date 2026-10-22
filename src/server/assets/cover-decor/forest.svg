@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#174E3A"/><stop offset="1" stop-color="#0F3D2E"/></linearGradient></defs>
+  <rect width="3350" height="1000" fill="#0F3D2E"/>
+  <g fill="#EFE6C8"><rect x="200" y="100" width="120" height="18"/><rect x="200" y="132" width="64" height="18" opacity=".5"/></g>
+  <path d="M360 109H2150" stroke="#EFE6C8" stroke-width="2" opacity=".25"/>
+  <!-- 方图：日出与层叠山丘 -->
+  <rect x="2350" width="1000" height="1000" fill="url(#sky)"/>
+  <circle cx="2900" cy="430" r="150" fill="#EFE6C8"/>
+  <path d="M2350 620C2520 520 2660 540 2800 610S3120 700 3350 560V1000H2350Z" fill="#2E7D5B"/>
+  <path d="M2350 760C2500 680 2700 700 2860 760S3160 820 3350 720V1000H2350Z" fill="#1F5C43"/>
+  <path d="M2350 880C2560 820 2760 850 2950 890S3220 920 3350 870V1000H2350Z" fill="#8BBF9F" opacity=".9"/>
+  <g fill="#EFE6C8" opacity=".7"><circle cx="2520" cy="250" r="6"/><circle cx="3180" cy="200" r="5"/><circle cx="3260" cy="330" r="4"/></g>
+</svg>

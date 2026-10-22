@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <defs>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2B5BFF"/><stop offset="1" stop-color="#1B47DA"/></linearGradient>
+    <pattern id="dots" width="44" height="44" patternUnits="userSpaceOnUse"><circle cx="22" cy="22" r="3.2" fill="#FFFFFF" opacity=".16"/></pattern>
+    <clipPath id="left"><rect width="2350" height="1000"/></clipPath>
+  </defs>
+  <rect width="3350" height="1000" fill="url(#glow)"/>
+  <g clip-path="url(#left)">
+    <rect x="1500" y="0" width="850" height="1000" fill="url(#dots)"/>
+    <!-- 背后的深色大箭头：与底色近似，标题压上也清晰 -->
+    <g fill="#1840C8" opacity=".9" transform="translate(1530 130) scale(1.7)"><path d="M0 84l92-84 216 230-216 230-92-84 138-146z"/><path d="M244 84l92-84 216 230-216 230-92-84 138-146z"/></g>
+    <path d="M0 1000V880L2350 800V1000Z" fill="#1337C6" opacity=".55"/>
+    <!-- 外框与角标 -->
+    <rect x="56" y="56" width="2238" height="888" fill="none" stroke="#FFF2B3" stroke-width="4" opacity=".55"/>
+    <g fill="#FFF2B3"><rect x="40" y="40" width="32" height="32"/><rect x="2278" y="40" width="32" height="32"/><rect x="40" y="928" width="32" height="32"/><rect x="2278" y="928" width="32" height="32"/></g>
+    <g fill="#FFF2B3"><rect x="130" y="112" width="150" height="20"/><rect x="130" y="146" width="90" height="20" opacity=".5"/></g>
+    <path d="M330 122H2160" stroke="#A3B5FF" stroke-width="3" opacity=".5"/>
+    <rect x="2178" y="112" width="20" height="20" fill="#FFF2B3"/>
+    <!-- 底部橙色箭头 -->
+    <g fill="#FF6A35" transform="translate(1990 846) scale(.2)"><path d="M0 84l92-84 216 230-216 230-92-84 138-146z"/><path d="M290 84l92-84 216 230-216 230-92-84 138-146z"/><path d="M580 84l92-84 216 230-216 230-92-84 138-146z"/></g>
+    <g fill="#FFF2B3"><rect x="130" y="852" width="110" height="14"/><rect x="130" y="880" width="54" height="14" opacity=".5"/></g>
+  </g>
+  <rect x="2350" width="1000" height="1000" fill="#1337C6"/>
+</svg>

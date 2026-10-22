@@ -1,0 +1,43 @@
+{
+  "name": "wx-publish-studio",
+  "version": "0.7.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "server": "bun --env-file=.env run src/server/index.ts",
+    "start": "bun run src/server/index.ts",
+    "import:production-config": "bun run scripts/import-production-config.ts",
+    "build": "vite build",
+    "test": "bun test --max-concurrency=1 tests",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@akairos/design": "^1.0.0",
+    "@akairos/myno": "0.4.5",
+    "@akairos/pipeline": "0.23.1",
+    "@akairos/typeset-studio": "0.4.1",
+    "@milkdown/crepe": "7.22.3",
+    "@milkdown/kit": "7.22.3",
+    "@napi-rs/canvas": "1.0.11",
+    "hono": "4.13.13",
+    "image-size": "2.0.4",
+    "lucide-react": "1.60.0",
+    "mdast-util-to-markdown": "2.2.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "21.0.3",
+    "@types/bun": "1.4.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.0.4",
+    "happy-dom": "21.0.3",
+    "typescript": "5.9.3",
+    "vite": "7.1.10"
+  }
+}

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <defs>
+    <pattern id="halftone" width="30" height="30" patternUnits="userSpaceOnUse"><circle cx="15" cy="15" r="4" fill="#161616" opacity=".09"/></pattern>
+    <linearGradient id="fade" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#F5F0E6" stop-opacity="0"/><stop offset="1" stop-color="#F5F0E6" stop-opacity="1"/></linearGradient>
+    <clipPath id="left"><rect width="2350" height="1000"/></clipPath>
+  </defs>
+  <rect width="3350" height="1000" fill="#F5F0E6"/>
+  <g clip-path="url(#left)">
+    <rect x="1500" y="500" width="850" height="500" fill="url(#halftone)"/>
+    <rect x="1500" y="500" width="850" height="500" fill="url(#fade)"/>
+    <!-- 报纸式粗细双线框 -->
+    <rect x="56" y="56" width="2238" height="888" fill="none" stroke="#161616" stroke-width="8"/>
+    <rect x="82" y="82" width="2186" height="836" fill="none" stroke="#B8862F" stroke-width="2.5"/>
+    <g fill="#161616"><rect x="56" y="56" width="70" height="70"/><rect x="2224" y="56" width="70" height="70"/><rect x="56" y="874" width="70" height="70"/><rect x="2224" y="874" width="70" height="70"/></g>
+    <g fill="#B8862F"><rect x="78" y="78" width="26" height="26"/><rect x="2246" y="78" width="26" height="26"/><rect x="78" y="896" width="26" height="26"/><rect x="2246" y="896" width="26" height="26"/></g>
+    <!-- 刊头双线与菱形 -->
+    <path d="M200 150H1080M1270 150H2150" stroke="#161616" stroke-width="3"/>
+    <path d="M200 166H1080M1270 166H2150" stroke="#161616" stroke-width="1.5"/>
+    <path d="M1175 128l30 30-30 30-30-30z" fill="#B8862F"/>
+    <path d="M200 834H1080M1270 834H2150" stroke="#161616" stroke-width="1.5"/>
+    <path d="M200 850H1080M1270 850H2150" stroke="#161616" stroke-width="3"/>
+    <path d="M1175 812l30 30-30 30-30-30z" fill="#B8862F"/>
+  </g>
+  <rect x="2350" width="1000" height="1000" fill="#E9E0CC"/>
+</svg>

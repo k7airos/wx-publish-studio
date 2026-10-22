@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <rect width="3350" height="1000" fill="#F7F3EC"/>
+  <rect x="200" y="96" width="1950" height="6" fill="#141414"/>
+  <rect x="110" y="200" width="26" height="600" fill="#D7262E"/>
+  <rect x="200" y="890" width="60" height="12" fill="#D7262E"/>
+  <!-- 方图：红底与大引号 -->
+  <rect x="2350" width="1000" height="1000" fill="#D7262E"/>
+  <g fill="#F7F3EC">
+    <path d="M2560 300h180v180c0 120-60 200-180 230v-90c50-20 80-60 84-110h-84Z"/>
+    <path d="M2820 300h180v180c0 120-60 200-180 230v-90c50-20 80-60 84-110h-84Z"/>
+  </g>
+  <rect x="2560" y="800" width="220" height="14" fill="#141414"/>
+  <rect x="2560" y="830" width="120" height="14" fill="#141414" opacity=".5"/>
+</svg>

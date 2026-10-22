@@ -1,0 +1,114 @@
+{
+  "cobalt": {
+    "id": "00000000-0000-4000-8000-000000000100",
+    "sha256": "ccbf33e0a67333961fe05834944012bd17d379cb56291c6b302ee697ac5dcb9a",
+    "byteLength": 47136,
+    "width": 3350,
+    "height": 1000
+  },
+  "editorial": {
+    "id": "00000000-0000-4000-8000-000000000101",
+    "sha256": "f208a905ec66758e99270c556070c509980ba63eeff0a27419dd34ecd08e3117",
+    "byteLength": 80210,
+    "width": 3350,
+    "height": 1000
+  },
+  "forest": {
+    "id": "00000000-0000-4000-8000-000000000102",
+    "sha256": "7e06132ab84cbcfea0853cb7ba4e92bf0d6578ff4bf84c8ec923b71cad3eaea2",
+    "byteLength": 38639,
+    "width": 3350,
+    "height": 1000
+  },
+  "press": {
+    "id": "00000000-0000-4000-8000-000000000104",
+    "sha256": "dc8f0c5c69b6a3988f05cb94e225eae5ee2b01bf592868493c4460e05c6a8a43",
+    "byteLength": 20743,
+    "width": 3350,
+    "height": 1000
+  },
+  "rose": {
+    "id": "00000000-0000-4000-8000-000000000105",
+    "sha256": "52d1db58074ac79414863b3183ab705db1a03dac5c71b806f3d5fdf62f39a35c",
+    "byteLength": 34799,
+    "width": 3350,
+    "height": 1000
+  },
+  "sunset": {
+    "id": "00000000-0000-4000-8000-000000000106",
+    "sha256": "42bffa7ee821b6ed449a4f22db69a0831fd5762971a425550e03ddcbd35c0f17",
+    "byteLength": 28956,
+    "width": 3350,
+    "height": 1000
+  },
+  "tech": {
+    "id": "00000000-0000-4000-8000-000000000107",
+    "sha256": "de2e4746097df83f55b52d54b325c533bfef15426e9ecda103c964c46e538f6a",
+    "byteLength": 162609,
+    "width": 3350,
+    "height": 1000
+  },
+  "indigo": {
+    "id": "00000000-0000-4000-8000-000000000108",
+    "sha256": "585111fca085a9e21054a8ea30a7fda0b47f238b48d661835ef9e6097ed590aa",
+    "byteLength": 90777,
+    "width": 3350,
+    "height": 1000
+  },
+  "poster_cobalt": {
+    "id": "00000000-0000-4000-8000-000000000109",
+    "sha256": "3257989e3e71333bdf67b01294468a3061dbbf1d3838c3987d3f9d6fe1ce8d59",
+    "byteLength": 122843,
+    "width": 3350,
+    "height": 1000
+  },
+  "poster_editorial": {
+    "id": "00000000-0000-4000-8000-00000000010a",
+    "sha256": "f7f03a1595a8a4cb74fa8fcd07457acb8def4da190e02d77da99b5b47be025b7",
+    "byteLength": 43783,
+    "width": 3350,
+    "height": 1000
+  },
+  "poster_forest": {
+    "id": "00000000-0000-4000-8000-00000000010b",
+    "sha256": "261cabf368740ff6fa9b62aad4b708ad1f8edeaaa6023543a7d4596c4b5d6a74",
+    "byteLength": 98702,
+    "width": 3350,
+    "height": 1000
+  },
+  "poster_indigo": {
+    "id": "00000000-0000-4000-8000-00000000010c",
+    "sha256": "fe3a58f43307eb4dfd80e3c8ead7c90a7ae74ac33f4e299a59edaaf663a72654",
+    "byteLength": 107568,
+    "width": 3350,
+    "height": 1000
+  },
+  "poster_press": {
+    "id": "00000000-0000-4000-8000-00000000010d",
+    "sha256": "506438952276df2e47aae1e7d79b86cfdeeb5e5cf39de849cb1e4b4bc18b62cc",
+    "byteLength": 30736,
+    "width": 3350,
+    "height": 1000
+  },
+  "poster_rose": {
+    "id": "00000000-0000-4000-8000-00000000010e",
+    "sha256": "54bf3bbf3ccd18d2c53996eb1278795c81b8e365139cf6820c65068c8d721bc2",
+    "byteLength": 59595,
+    "width": 3350,
+    "height": 1000
+  },
+  "poster_tech": {
+    "id": "00000000-0000-4000-8000-000000000110",
+    "sha256": "dfb6b9ba5d97426c9387b0e3d23a545e7fda488ae42f9b8dcb516ad7e411e2f5",
+    "byteLength": 182124,
+    "width": 3350,
+    "height": 1000
+  },
+  "poster_sunset": {
+    "id": "00000000-0000-4000-8000-000000000111",
+    "sha256": "75d66c2688b758f06e64a4dd0dc4dc70c429baa3ac53677ab8e8bffac3fa6f50",
+    "byteLength": 28171,
+    "width": 3350,
+    "height": 1000
+  }
+}

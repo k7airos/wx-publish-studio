@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3350" height="1000" viewBox="0 0 3350 1000">
+  <rect width="3350" height="1000" fill="#2050EE"/>
+  <!-- 头图区：只在上下留白与左缘装饰 -->
+  <g fill="#FFF2B3"><rect x="200" y="96" width="150" height="22"/><rect x="200" y="134" width="90" height="22"/><rect x="2110" y="104" width="22" height="22"/></g>
+  <path d="M400 115H2060" stroke="#A3B5FF" stroke-width="3" opacity=".45"/>
+  <g fill="#FFF2B3"><rect x="200" y="866" width="110" height="16"/><rect x="200" y="894" width="54" height="16" opacity=".45"/></g>
+  <!-- 方图：深色斜切底块与橙色双箭头 -->
+  <path d="M2350 640L3350 540V1000H2350Z" fill="#1337C6"/>
+  <g fill="#FF6A35" transform="translate(2520 230) scale(1.32)"><path d="M0 84l92-84 216 230-216 230-92-84 138-146z"/><path d="M244 84l92-84 216 230-216 230-92-84 138-146z"/></g>
+  <g fill="#FFF2B3"><rect x="2470" y="860" width="80" height="14"/><rect x="2470" y="886" width="40" height="14" opacity=".45"/></g>
+</svg>

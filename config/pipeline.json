@@ -1,0 +1,6 @@
+{
+  "plugins": {
+    "markdownRenderer": { "module": "@akairos/myno/adapter", "options": {} },
+    "imageRenderer": { "module": "@akairos/typeset-studio/adapter", "options": {} }
+  }
+}
