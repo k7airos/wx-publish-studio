@@ -6,38 +6,33 @@
 
 - Docker Engine 24+ 与 `docker compose` v2。
 - 一个具备管理员权限的微信公众号（能扫码登录微信公众平台）。
-- 一个兼容 `/api/v1/wx/*` 的微信中转服务。公开实现见 `bun-wx-server`（<https://github.com/k7airos/bun-wx-server>）；**该服务当前只实现 3 个微信端点，Pipeline 需要 7 个**，缺口见 README「当前状态」。中转是独立部署的服务，不在本仓库的 compose 里。
+- 磁盘留够：首次构建要产出应用镜像（约 1GB）、Worker 镜像（约 2.1GB）与中转镜像（约 250MB），加上构建缓存建议预留 10GB 以上。
 - 如果要发布带图片的正文，还需要对象存储（COS 一类）与公开 HTTPS 地址。
 
-本仓库不包含中转服务，也不发布 Docker 镜像。
+微信中转**默认随栈一起起**（模式 A）：compose 从公开仓库 `bun-wx-server` 的固定提交构建并运行它，不需要自己准备中转服务。也可以用自己的中转（模式 B），要求实现 `/api/v1/wx/*` 契约；**该服务当前只实现 3 个微信端点，Pipeline 需要 7 个**，缺口见 README「当前状态」。
+
+本仓库不发布 Docker 镜像；应用、Worker 与中转三个镜像都由 `docker compose build` 在本机构建。
 
 ## 首次启动
 
-1. `cp .env.example .env`，生成独立随机值填入 `POSTGRES_PASSWORD`、`CREDENTIAL_ENCRYPTION_KEY`、`PIPELINE_WORKER_TOKEN`，以及 bootstrap 模式至少 32 字符的 `BOOTSTRAP_SECRET`。建议 `openssl rand -hex 32`；数据库密码用十六进制，避免 URL 编码歧义。
-2. 明确 `APP_ORIGIN`。SSH 转发使用 `http://127.0.0.1:18889`，浏览器实际访问端口须一致；独立 HTTPS 入口填完整 origin。只接受 HTTPS 或 HTTP loopback，不接受路径、userinfo 或通配 origin。Cookie 的 Secure 由此固定配置决定，不信任 `X-Forwarded-*`。应用容器内部监听 `0.0.0.0`，宿主仍只暴露 `127.0.0.1`，数据库与 Worker 不映射端口。
-3. 填写 `ZZHUB_WX_BASE_URL`，它必须是实现 `/api/v1/wx/*` 的受控中转服务，不能填微信官方 API。
-4. 准备 Worker 镜像。npm 包 `@akairos/pipeline` 不含 `services/` 目录，不能仅安装 npm 包后启动 Worker；须从 Pipeline 仓库的固定提交构建镜像，并设置 `PIPELINE_WORKER_IMAGE`。具体命令见 README「获取 Worker 镜像」：
+1. `cp .env.example .env`，生成独立随机值填入 `POSTGRES_PASSWORD`、`CREDENTIAL_ENCRYPTION_KEY`、`PIPELINE_WORKER_TOKEN`、`RELAY_JWT_SECRET`，以及 bootstrap 模式至少 32 字符的 `BOOTSTRAP_SECRET`。建议 `openssl rand -hex 32`；数据库密码用十六进制，避免 URL 编码歧义。
+2. 明确 `APP_ORIGIN`。SSH 转发使用 `http://127.0.0.1:18889`，浏览器实际访问端口须一致；独立 HTTPS 入口填完整 origin。只接受 HTTPS 或 HTTP loopback，不接受路径、userinfo 或通配 origin。Cookie 的 Secure 由此固定配置决定，不信任 `X-Forwarded-*`。应用容器内部监听 `0.0.0.0`，宿主仍只暴露 `127.0.0.1`，数据库、Worker 与同栈中转都不映射端口。
+3. **保持 `ZZHUB_WX_BASE_URL` 留空**（模式 A：同栈自带中转）。填上地址就是模式 B（外部中转），此时 compose 不起中转容器、Worker 指向你的地址。注意 `.env` 里的 `RELAY_MODE` 与 `RELAY_REPLICAS` 是派生变量，依赖 `ZZHUB_WX_BASE_URL` 的取值，必须留在它后面、且不要追加新的 `ZZHUB_WX_BASE_URL` 行到文件末尾。
+4. `docker compose up -d --build --wait`。应用镜像由本地代码构建；Worker 与中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建，**不需要任何镜像仓库账号**。冷构建约 10-20 分钟（Worker 最重，要装 Chromium 与 Noto CJK 字体），有缓存时是秒级。构建完成后 `docker compose ps` 应显示四个服务都是 `healthy`。
+5. 初始化同栈中转：模式 A 下中转刚起来时还没有管理员，`bash scripts/relay-init.sh` 会创建管理员、生成带 `wx` scope 的 PAT 并写回 `.env` 的 `PUBLISHING_RELAY_PAT`，随后再跑一次 `docker compose up -d --wait` 让应用加载令牌。模式 B 下这一步跳过，在界面里填你自己中转的 PAT。
+6. 打开配置的 origin，按所选模式使用访问口令。修改本机端口时同步 `.env` 的 `APP_PORT` 与 `APP_ORIGIN`。
 
-   ```sh
-   git clone https://github.com/k7airos/zzhub-pipeline.git
-   cd zzhub-pipeline
-   git checkout 4cf5725f35758fa5fada8786cb57cd9960388c7f
-   docker build -f services/cloud-worker/Dockerfile -t wx-pipeline-worker:0.24.0 .
-   ```
-
-   构建上下文必须是 Pipeline 仓库根目录；镜像内已装 Chromium 与 Noto CJK 字体，不需要额外 build args。构建完回到本仓库，把镜像引用写进 `.env` 的 `PIPELINE_WORKER_IMAGE`。
-5. 准备微信中转：按 `bun-wx-server` 的公开说明单独起一个服务，取一个带 `wx` scope 的 PAT，把地址写进 `ZZHUB_WX_BASE_URL`。缺中转时 app 仍能启动，但所有发布动作都会失败。
-6. `docker compose up -d --build --wait`，打开配置的 origin，按所选模式使用访问口令。修改本机端口时同步 `.env` 的 `APP_PORT` 与 `APP_ORIGIN`。
-
-`docker compose` 对 7 项必填配置（`APP_ORIGIN`、`POSTGRES_PASSWORD`、`CREDENTIAL_ENCRYPTION_KEY`、`BOOTSTRAP_SECRET`、`PIPELINE_WORKER_TOKEN`、`PIPELINE_WORKER_IMAGE`、`ZZHUB_WX_BASE_URL`）用 `:?` 直接报错并指出缺哪一项；填了但不合规的值由应用启动时校验并给出明确原因（例如 `BOOTSTRAP_SECRET must contain at least 32 characters`）。新安装不需要账号文件，空连接可以编辑保存文章，发布按钮会提示添加连接。
+`docker compose` 对 5 项必填配置（`APP_ORIGIN`、`POSTGRES_PASSWORD`、`CREDENTIAL_ENCRYPTION_KEY`、`BOOTSTRAP_SECRET`、`PIPELINE_WORKER_TOKEN`）用 `:?` 直接报错并指出缺哪一项；`RELAY_JWT_SECRET` 只在模式 A 下必填；填了但不合规的值由应用启动时校验并给出明确原因（例如 `BOOTSTRAP_SECRET must contain at least 32 characters`）。新安装不需要账号文件，空连接可以编辑保存文章，发布按钮会提示添加连接。
 
 > `BOOTSTRAP_SECRET` 在 compose 里是硬性必填（compose 不做条件判断）。用 `PUBLISHING_AUTH_MODE=oauth` 且不需要口令登录时，也要给出一个占位值；应用本身只在 bootstrap 模式下校验它的长度。
+
+> Worker 镜像可以用 `PIPELINE_WORKER_IMAGE` 覆盖成自己已经构建好的镜像；覆盖后请用**不带 `--build`** 的 `docker compose up -d --wait` 启动，否则 compose 会用 git context 重建并覆盖这个 tag。
 
 ## 配置公众号
 
 在「公众号」页打开连接向导，填写名称、公众号 AppID、AppSecret：
 
-- **中转访问令牌（PAT）**：仅当部署**没有**配置 `PUBLISHING_RELAY_PAT` 时才需要填写，这是你自己中转服务的访问令牌。保存后直接可选，无需重启。
+- **中转访问令牌（PAT）**：仅当部署**没有**配置 `PUBLISHING_RELAY_PAT` 时才需要填写，这是你自己中转服务的访问令牌。保存后直接可选，无需重启。模式 A 下 `scripts/relay-init.sh` 会把同栈中转的 PAT 写进 `PUBLISHING_RELAY_PAT`，向导里就不用填了；模式 B 下由使用者填自己中转的 PAT。
 - **IP 白名单**：部署配置了 `PUBLISHING_WX_WHITELIST_IP` 时向导直接显示该值；否则由你填写自己中转服务的出口公网 IP。填错不会在保存时报错，而是在第一次存入草稿箱时暴露。
 
 > `PUBLISHING_RELAY_PAT` 与 `PUBLISHING_WX_WHITELIST_IP` 都在**启动时读取一次**，改了环境变量必须重启容器才生效。
@@ -49,9 +44,9 @@
 
 ## 数据、备份与恢复
 
-数据库卷保存文章、会话、连接、加密凭据修订与任务映射；应用卷保存上传的封面与正文素材；Worker 卷保存账号、队列和运行结果。`docker compose stop` / `down` 不删除卷；**不要使用 `down -v` 清理用户数据**。
+数据库卷保存文章、会话、连接、加密凭据修订与任务映射；应用卷保存上传的封面与正文素材；Worker 卷保存账号、队列和运行结果；同栈中转卷保存管理员、访问令牌与审计日志。`docker compose stop` / `down` 不删除卷；**不要使用 `down -v` 清理用户数据**。
 
-更新前备份三个卷及 `CREDENTIAL_ENCRYPTION_KEY`。`schema_migrations` 记录已执行迁移，迁移在应用启动时自动执行，旧 job 仍用旧 key，不清空原数据。
+更新前备份四个卷及 `CREDENTIAL_ENCRYPTION_KEY`。`schema_migrations` 记录已执行迁移，迁移在应用启动时自动执行，旧 job 仍用旧 key，不清空原数据。
 
 同一文档修订和账号只有一条 job。遇到未知结果，先刷新原任务和核对草稿箱；没有 Worker ID 时按原幂等键和账号只读 lookup，核对 title/bodyHash 和全部快照身份后采用原 Worker ID；重复提交或确认只读查询，不重新登记、上传、POST 任务或 POST 确认。不要编辑正文后用新任务盲重发。当前没有取消任务或自动重试。
 
@@ -134,10 +129,11 @@ Docker app 固定安装 `fonts-noto-cjk=1:20240730+repack1-1`。封面测量前�
 
 ## 已知限制
 
-- **没有公共镜像**：应用镜像需自行 `docker compose build`；Worker 镜像需按上文从 Pipeline 的固定提交自行构建。
+- **没有公共镜像**：应用、Worker 与同栈中转三个镜像都由 `docker compose build` 在本机构建；Worker 与中转用 git context 从两个公开仓库的固定提交构建，不需要镜像仓库账号。
 - **中转端点不全**：公开的中转服务只实现 `cgi-bin/token`、`material/add_material`、`draft/add`，缺 `draft/update`、`draft/get`、`draft/delete`、`draft/batchget`，也未实现 `Idempotency-Key` 去重。缺 `draft/update` 时「改稿后覆盖同一篇草稿」不可靠。
 - **正文图片依赖 COS**：见上一节。
 - **单实例**：app 与 Worker 均单副本。
+- **同栈中转不映射宿主端口**：模式 A 的中转只在 compose 网络内可达（`http://relay:3001`），外部访问需自行反代。
 - **仅 bootstrap 鉴权**：无注册、无群发、无多用户配额管理。
 - **分发产物里的默认文案**：上游编辑器包的默认主题带有示例品牌文案，本项目在构建期按通用规则中性化（规则见 `scripts/brand-copy.ts`，不写死任何具体名称）；上游包升级后需复核。详见 README「当前状态」。
 

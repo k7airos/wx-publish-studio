@@ -43,14 +43,20 @@ services:
       timeout: 5s
       retries: 6
   worker:
-    image: ${PIPELINE_WORKER_IMAGE:?Set an immutable locally available Worker image}
+    # Worker 镜像由 compose 直接从公开仓库的固定提交构建，不需要任何镜像仓库账号。
+    # 已自建镜像时把 PIPELINE_WORKER_IMAGE 指向它，并用不带 --build 的启动命令跳过重建。
+    image: ${PIPELINE_WORKER_IMAGE:-wx-pipeline-worker:0.24.0}
+    build:
+      context: https://github.com/k7airos/zzhub-pipeline.git#4cf5725f35758fa5fada8786cb57cd9960388c7f
+      dockerfile: services/cloud-worker/Dockerfile
     restart: unless-stopped
     environment:
       PIPELINE_WORKER_TOKEN: ${PIPELINE_WORKER_TOKEN}
       PIPELINE_WORKER_HOST: 0.0.0.0
       PIPELINE_WORKER_PRIVATE_NETWORK: "1"
       PIPELINE_CONFIG_FILE: /run/config/pipeline.json
-      ZZHUB_WX_BASE_URL: ${ZZHUB_WX_BASE_URL:?Set the compatible WeChat relay URL}
+      # 留空 = 同栈自带中转（http://relay:3001）；填写 = 使用外部中转地址。
+      ZZHUB_WX_BASE_URL: ${ZZHUB_WX_BASE_URL:-http://relay:3001}
     volumes:
       - ./config/pipeline.json:/run/config/pipeline.json:ro
       - worker-data:/data
@@ -60,6 +66,32 @@ services:
       interval: 10s
       timeout: 5s
       retries: 6
+  relay:
+    # 微信中转：同栈自带（模式 A）或使用外部中转（模式 B）。镜像同样由 compose 从公开仓库的固定提交构建。
+    image: ${RELAY_IMAGE:-wx-relay:0.2.2}
+    build:
+      context: https://github.com/k7airos/bun-wx-server.git#afec8d961e0eec95cd11cd6bb6368a310f3b4cf4
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # 模式 B（.env 里填了 ZZHUB_WX_BASE_URL）由 .env 的派生变量把副本数置 0，中转不启动。
+    deploy:
+      replicas: ${RELAY_REPLICAS:-1}
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      DATABASE_PATH: /data/app.sqlite
+      # 仅模式 A 需要：中转的生产模式必须显式配置 JWT_SECRET；模式 B 下中转不启动，此值不使用。
+      JWT_SECRET: ${RELAY_MODE:-${RELAY_JWT_SECRET:?Set RELAY_JWT_SECRET (the bundled relay requires it)}}
+    volumes:
+      - relay-data:/data
+    networks: [studio]
+    # 运行时镜像内没有 curl/wget，用 bash 的 /dev/tcp 直接发一个 HTTP 请求。
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/3001 && printf 'GET /health HTTP/1.1\\r\\nHost: 127.0.0.1\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
   db:
     image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     restart: unless-stopped
@@ -81,3 +113,4 @@ volumes:
   app-data: {}
   database-data: {}
   worker-data: {}
+  relay-data: {}

@@ -7,7 +7,7 @@
 - 仓库名：`k7airos/wx-publish-studio`
 - 仓库与镜像名统一为 `wx-publish-studio`。
 - 本项目**不发布 npm 包**；依赖全部走公共 `@akairos/*`。
-- 应用不发布公共 Docker 镜像，自托管者自行 `docker compose build`；Worker 镜像从 Pipeline 仓库的固定提交自行构建（见 README「获取 Worker 镜像」）。
+- 应用不发布公共 Docker 镜像，自托管者自行 `docker compose build`；Worker 与微信中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建（见 README「快速开始」第 3 步），不需要镜像仓库账号。
 
 ## 干净历史
 
