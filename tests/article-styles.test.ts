@@ -113,7 +113,7 @@ test("B1 immutable styles apply to document revisions and remain frozen across u
     const foreign = await new StyleStore(sql).create(foreignOwner, { name: "其他用户样式", config: controls() });
     expect((await request(`/documents/${second.id}/style`, "PUT", { expectedRevision: 2, styleId: foreign.id, styleRevision: 1 })).status).toBe(400);
     expect((await (await request("/styles")).json() as any).styles.some((item: any) => item.id === foreign.id)).toBe(false);
-    const [migrations] = await sql`SELECT count(*)::integer AS count FROM schema_migrations`; expect(migrations.count).toBe(11);
+    const [migrations] = await sql`SELECT count(*)::integer AS count FROM schema_migrations`; expect(migrations.count).toBe(12);
     // 已保存的 hash 错误时不得把任务重新解释为成功。
     await sql`UPDATE jobs SET status='running' WHERE id=${restored.id}`;
     wrongHash = true;

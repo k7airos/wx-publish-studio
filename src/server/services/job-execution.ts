@@ -8,6 +8,7 @@ import { AccountStore } from "./account-store";
 import { lockOwner } from "./owner-limits";
 import { coverSnapshotIdentity } from "@akairos/pipeline/cover-snapshot";
 import { BodyAssetStore } from "./body-asset-store";
+import { sanitizeFailure } from "./failure-detail";
 const UUID = /^[a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
 
 // 只有目标公众号的成功草稿身份齐全时，才能向用户确认完成。
@@ -53,8 +54,10 @@ export async function applyWorkerJob(sql: Database, row: any, worker: any) {
   // Worker 放弃或过期的预览保留原因，界面据此区分"预览已关闭"与"发布失败"。
   const closedPreview = row.operation === "preview" && status === "failed" && ["preview_expired", "preview_discarded"].includes(worker.error) ? worker.error as string : null;
   const error = closedPreview ?? (status === "failed" ? "worker_failed" : status === "interrupted" ? "worker_interrupted" : status === "unknown" ? "worker_result_unknown" : null);
+  // 失败原因只在失败或中断时保留，已脱敏限长；其余状态清空。
+  const errorDetail = !closedPreview && (status === "failed" || status === "interrupted") ? sanitizeFailure(worker.error) : null;
   const [updated] = await sql`UPDATE jobs SET worker_job_id=${worker.id},status=${status},step=${step},worker_publication_requested=worker_publication_requested OR ${worker.publicationRequested === true},
-    error_code=${error},draft_media_id=${draft?.external_id ?? null},article_theme_hash=${typeof worker.result?.articleThemeHash === "string" ? worker.result.articleThemeHash : row.article_theme_hash ?? null},
+    error_code=${error},error_detail=${errorDetail},draft_media_id=${draft?.external_id ?? null},article_theme_hash=${typeof worker.result?.articleThemeHash === "string" ? worker.result.articleThemeHash : row.article_theme_hash ?? null},
     snapshot_hash=${snapshotHash},artifact_manifest=${manifest}::jsonb,artifact_manifest_hash=${manifestHash},updated_at=now() WHERE id=${row.id} RETURNING *`;
   return updated;
 }

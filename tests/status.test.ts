@@ -3,7 +3,7 @@ import { dayGroup, documentHuman, jobHuman, publishButton, relativeTime } from "
 import type { DocumentSummary, Job } from "../src/web/api";
 
 const job = (overrides: Partial<Job>): Job => ({
-  id: "j", documentId: "d", documentRevision: 2, accountId: "a", status: "preview_ready", step: "preview_ready", error: null, draftMediaId: null,
+  id: "j", documentId: "d", documentRevision: 2, accountId: "a", status: "preview_ready", step: "preview_ready", error: null, errorDetail: null, errorHint: null, draftMediaId: null,
   simulated: false, articleStyleHash: null, articleThemeHash: null, coverSnapshotHash: null, coverAssetHash: null, coverFontHash: null,
   operation: "preview", inputHash: null, snapshotHash: null, artifactManifestHash: null, artifactManifest: null,
   publicationRequested: false, authorizationRevoked: false, createdAt: "2026-10-20T10:00:00.000Z", updatedAt: "2026-10-20T10:00:00.000Z", ...overrides,
@@ -73,3 +73,11 @@ test("the editor publish button follows the publish progress", () => {
   expect(state([job({ documentId: "other", status: "running" })])).toEqual({ label: "发布", kind: "idle" });
 });
 
+
+test("发布失败时按归类给出处理建议，认不出时保留通用说法", () => {
+  const failed = job({ status: "failed", operation: "direct" });
+  expect(jobHuman({ ...failed, errorHint: "invalid_appid" }).hint).toContain("AppID");
+  expect(jobHuman({ ...failed, errorHint: "ip_whitelist" }, undefined, "203.0.113.9").hint).toContain("203.0.113.9");
+  expect(jobHuman({ ...failed, errorHint: "ip_whitelist" }).hint).toContain("出口 IP");
+  expect(jobHuman(failed).hint).toContain("可以修改后重新发布");
+});

@@ -268,7 +268,10 @@ describe("1A-R1 application contract against a fake Worker (not WeChat)", () => 
     for (const status of ["failed", "interrupted"]) {
       nextStatus = status;
       const draft = await (await request("/documents", "POST", { title: status, body: "正文" })).json();
-      expect((await (await postJob(draft)).json()).status).toBe(status);
+      const dto = await (await postJob(draft)).json();
+      expect(dto.status).toBe(status);
+      // 失败原因带到任务 DTO，但令牌类长串已被脱敏。
+      if (status === "failed") { expect(dto.errorDetail).toBe("raw error contains [已隐藏]"); expect(dto.errorHint).toBeNull(); expect(JSON.stringify(dto)).not.toContain(pat); }
     }
   });
 });

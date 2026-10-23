@@ -187,8 +187,12 @@ export function PublishSheet({ request, store, onClose, onWorking }: { request: 
 
     {step === "failed" && job && <div className="result">
       <div className="result-icon bad"><CircleAlert /></div>
-      <h3>{jobHuman(job, currentRevision).label}</h3>
-      <p>{jobHuman(job, currentRevision).hint ?? "这次没有写入公众号。"}</p>
+      <h3>{jobHuman(job, currentRevision, store.session.whitelistIp).label}</h3>
+      <p>{jobHuman(job, currentRevision, store.session.whitelistIp).hint ?? "这次没有写入公众号。"}</p>
+      {job.errorDetail && <details className="tech">
+        <summary>失败原因（原文）</summary>
+        <code>{job.errorDetail}</code>
+      </details>}
     </div>}
 
     {step === "attention" && <div className="result">

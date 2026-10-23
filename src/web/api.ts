@@ -52,6 +52,10 @@ export interface Job {
   status: string;
   step: string;
   error: string | null;
+  /** 发布失败时 Worker 给出的原因（服务端已脱敏、限长）。 */
+  errorDetail: string | null;
+  /** 服务端对常见失败原因的归类，界面据此给出处理建议。 */
+  errorHint: "invalid_appid" | "invalid_secret" | "ip_whitelist" | "relay_unauthorized" | "relay_unreachable" | null;
   draftMediaId: string | null;
   simulated: boolean;
   articleStyleHash: string | null;

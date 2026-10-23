@@ -9,6 +9,7 @@ import { StyleError } from "../services/style-store";
 import { CoverError } from "../services/asset-store";
 import { PreviewError } from "../services/body-asset-store";
 import { LimitError } from "../services/owner-limits";
+import { classifyFailure } from "../services/failure-detail";
 import { createJob } from "../services/job-create";
 import { dispatchNewJob, refreshJob } from "../services/job-execution";
 export { applyWorkerJob } from "../services/job-execution";
@@ -16,7 +17,7 @@ export { applyWorkerJob } from "../services/job-execution";
 export const jobDto = (row: any) => ({
   id: row.id, documentId: row.document_id, documentRevision: row.document_revision,
   accountId: row.account_id, status: row.status, step: row.step,
-  error: row.error_code, draftMediaId: row.draft_media_id,
+  error: row.error_code, errorDetail: row.error_detail ?? null, errorHint: classifyFailure(row.error_detail ?? null), draftMediaId: row.draft_media_id,
   simulated: row.simulated === true,
   articleStyleHash: row.article_style_hash ?? null,
   articleThemeHash: row.article_theme_hash ?? null,

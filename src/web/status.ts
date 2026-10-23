@@ -1,6 +1,6 @@
 import type { Account, DocumentSummary, Job } from "./api";
 import type { Tone } from "./ui";
-import { pick } from "./copy";
+import { failureAdvice, pick } from "./copy";
 
 export interface Human { label: string; tone: Tone; busy?: boolean; hint?: string }
 
@@ -8,7 +8,7 @@ export const BUSY_STATUSES = ["submitting", "accepting", "queued", "running"];
 export const ATTENTION_STATUSES = ["unknown", "interrupted"];
 
 /** 任务状态的客户说法：不出现修订、快照、Worker 等内部概念。 */
-export function jobHuman(job: Job, currentRevision?: number): Human {
+export function jobHuman(job: Job, currentRevision?: number, whitelistIp?: string | null): Human {
   if (job.error === "execution_environment_mismatch") return { label: "环境不一致", tone: "warn", hint: "这条记录来自另一套环境，只能在原环境查看。" };
   if (BUSY_STATUSES.includes(job.status)) return job.publicationRequested
     ? { label: "正在存入草稿箱", tone: "info", busy: true }
@@ -25,7 +25,7 @@ export function jobHuman(job: Job, currentRevision?: number): Human {
     if (job.error === "preview_expired") return { label: "预览已过期", tone: "neutral", hint: "超过 7 天未确认的预览会自动关闭。" };
     if (job.error === "preview_discarded") return { label: "已放弃", tone: "neutral" };
     if (job.error === "account_disabled" || job.error === "account_version_conflict") return { label: "公众号连接有变化", tone: "bad", hint: "请检查公众号连接后重新发布。" };
-    return { label: "未成功", tone: "bad", hint: "这次没有写入公众号，可以修改后重新发布。" };
+    return { label: "未成功", tone: "bad", hint: failureAdvice(job.errorHint, whitelistIp) ?? "这次没有写入公众号，可以修改后重新发布。" };
   }
   if (job.publicationRequested && job.status === "preview_ready") return { label: "正在存入草稿箱", tone: "info", busy: true };
   return { label: "结果待核对", tone: "warn", hint: "请先到公众号后台草稿箱确认是否已经存入，不要重复发布。" };

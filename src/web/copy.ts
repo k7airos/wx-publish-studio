@@ -1,3 +1,4 @@
+import type { Job } from "./api";
 // 客户可见文案的唯一来源，按部署形态分流。
 //
 // 开源自托管部署默认 neutral：不出现任何私有品牌、私有产品名或会员体系用语。
@@ -121,6 +122,18 @@ export const ERROR_TEXT_HOSTED: Record<string, string> = {
 export function errorText(code: string | null | undefined): string | undefined {
   if (!code) return undefined;
   return current === "hosted" ? (ERROR_TEXT_HOSTED[code] ?? ERROR_TEXT[code]) : ERROR_TEXT[code];
+}
+
+/** 发布失败的常见原因与处理建议；whitelistIp 为部署提供的白名单出口 IP，未知时只说「本服务的出口 IP」。 */
+export function failureAdvice(hint: Job["errorHint"], whitelistIp?: string | null): string | undefined {
+  switch (hint) {
+    case "invalid_appid": return "微信不认这个 AppID。请到公众号后台「设置与开发 → 基本配置」核对 AppID，在「公众号」页重新填写连接。";
+    case "invalid_secret": return "AppSecret 不正确或已被重置。请到公众号后台「设置与开发 → 基本配置」重置并复制新的 AppSecret，在「公众号」页更新连接。";
+    case "ip_whitelist": return `服务器的出口 IP 不在公众号的白名单里。请在公众号后台「设置与开发 → 基本配置」，把${whitelistIp ? ` ${whitelistIp} ` : "本服务的出口 IP "}加入 IP 白名单后重试。`;
+    case "relay_unauthorized": return "发布服务连不上微信中转：中转令牌无效或已过期。请重新生成中转令牌并更新到配置里，再重启服务。";
+    case "relay_unreachable": return "发布服务连不上微信中转。请检查中转服务是否在运行、地址是否填对，再重试。";
+    default: return undefined;
+  }
 }
 
 /** 登录页从地址栏读到的失败原因。 */
