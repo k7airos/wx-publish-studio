@@ -1,3 +1,5 @@
+import { coverSnapshotIdentity } from "@akairos/pipeline/cover-snapshot";
+import { ARTICLE_COVER_FONT } from "@akairos/typeset-studio/cover";
 import { expect, test } from "bun:test";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -24,7 +26,7 @@ test("real application process restart retains job/key and recovers polling with
   let workerInput: any;
   const worker = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(request) {
     const path = new URL(request.url).pathname;
-    if (path === "/health") return Response.json({ capabilities: { jobLookupByIdempotencyKey: true } });
+    if (path === "/health") return Response.json({ capabilities: { articleStyleSchemaVersions: [1], coverSnapshotSchemaVersions: [1], articleCoverFonts: [ARTICLE_COVER_FONT], jobLookupByIdempotencyKey: true } });
     if (path.startsWith("/v1/accounts/") && request.method === "PUT") { registrations++; return Response.json({ active: true }); }
     if (path === "/v1/jobs" && request.method === "POST") {
       submissions++; workerInput = await request.json();
@@ -33,7 +35,7 @@ test("real application process restart retains job/key and recovers polling with
     if (path === `/v1/jobs/${workerId}`) {
       if (failQuery) return new Response("unavailable", { status: 503 });
       return Response.json({ id: workerId, input: workerInput, bodyHash: createHash("sha256").update(workerInput.body).digest("hex"), status, step: status === "succeeded" ? "done" : status,
-        result: { publishResults: status === "succeeded" ? [{ account: "test", status: "success", external_id: "SIMULATED_RESTART_DRAFT" }] : [] } });
+        result: { ...(status === "succeeded" ? { ...(workerInput.articleStyle ? { articleStyleHash: workerInput.articleStyle.hash, articleThemeHash: "a".repeat(64) } : {}), ...(workerInput.coverSnapshot ? coverSnapshotIdentity(workerInput.coverSnapshot) : {}) } : {}), publishResults: status === "succeeded" ? [{ account: "test", status: "success", external_id: "SIMULATED_RESTART_DRAFT", ...(workerInput.articleStyle ? { article_theme_hash: "a".repeat(64) } : {}) }] : [] } });
     }
     return new Response("missing", { status: 404 });
   } });

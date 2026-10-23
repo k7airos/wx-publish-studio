@@ -1,3 +1,5 @@
+import { coverSnapshotIdentity } from "@akairos/pipeline/cover-snapshot";
+import { ARTICLE_COVER_FONT } from "@akairos/typeset-studio/cover";
 import { expect, test } from "bun:test";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -25,7 +27,7 @@ test("C1 preview waits across restart, confirms original artifacts once and pres
   const png = await createCanvas(30, 15).encode("png");
   const worker = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(request) {
     const url = new URL(request.url); const path = url.pathname;
-    if (path === "/health") return Response.json({ capabilities: { jobLookupByIdempotencyKey: true, articleSnapshotSchemaVersions: [1], previewConfirm: true, bodyAssetUpload: true } });
+    if (path === "/health") return Response.json({ capabilities: { articleStyleSchemaVersions: [1], coverSnapshotSchemaVersions: [1], articleCoverFonts: [ARTICLE_COVER_FONT], jobLookupByIdempotencyKey: true, articleSnapshotSchemaVersions: [1], previewConfirm: true, bodyAssetUpload: true } });
     if (path.startsWith("/v1/accounts/")) return Response.json({ active: true });
     const assetKey = /^\/v1\/assets\/([a-f\d]{64})$/.exec(path)?.[1];
     if (assetKey) { const bytes = Buffer.from(await request.arrayBuffer()); assets.set(assetKey, bytes); return Response.json({ sha256: assetKey, contentType: request.headers.get("Content-Type"), byteLength: bytes.length, width: 30, height: 15 }); }
@@ -56,7 +58,7 @@ test("C1 preview waits across restart, confirms original artifacts once and pres
     if (path.endsWith("/publish")) {
       const input = await request.json() as any;
       if (input.snapshotHash !== job.result.snapshotHash || input.artifactManifestHash !== job.result.artifactManifestHash) return new Response("conflict", { status: 409 });
-      if (!job.publicationRequested) { job.publicationRequested = true; confirmations++; job.status = "succeeded"; job.step = "done"; job.result.publishResults = [{ account: job.input.account, status: "success", external_id: "SIMULATED_PREVIEW_DRAFT" }]; }
+      if (!job.publicationRequested) { job.publicationRequested = true; confirmations++; job.status = "succeeded"; job.step = "done"; Object.assign(job.result, job.input.articleStyle ? { articleStyleHash: job.input.articleStyle.hash, articleThemeHash: "a".repeat(64) } : {}, job.input.coverSnapshot ? coverSnapshotIdentity(job.input.coverSnapshot) : {}); job.result.publishResults = [{ account: job.input.account, status: "success", external_id: "SIMULATED_PREVIEW_DRAFT", ...(job.input.articleStyle ? { article_theme_hash: "a".repeat(64) } : {}) }]; }
       if (loseConfirm) { loseConfirm = false; return new Response("accepted response lost", { status: 502 }); }
       return Response.json(job);
     }

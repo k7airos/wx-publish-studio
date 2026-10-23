@@ -1,3 +1,5 @@
+import { coverSnapshotIdentity } from "@akairos/pipeline/cover-snapshot";
+import { ARTICLE_COVER_FONT } from "@akairos/typeset-studio/cover";
 import { expect, test } from "bun:test";
 import { createHash, randomUUID } from "node:crypto";
 import { SQL } from "bun";
@@ -21,7 +23,7 @@ test("B1 immutable styles apply to document revisions and remain frozen across u
   const workerJobs = new Map<string, any>();
   const worker = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(request) {
     const url = new URL(request.url); const path = url.pathname;
-    if (path === "/health") return Response.json({ capabilities: { jobLookupByIdempotencyKey: true, articleStyleSchemaVersions: supported ? [1, 2] : [] } });
+    if (path === "/health") return Response.json({ capabilities: { jobLookupByIdempotencyKey: true, articleStyleSchemaVersions: supported ? [1, 2] : [], coverSnapshotSchemaVersions: [1], articleCoverFonts: [ARTICLE_COVER_FONT] } });
     if (path.startsWith("/v1/accounts/")) return Response.json({ active: true });
     if (path === "/v1/jobs/by-idempotency-key") {
       const item = workerJobs.get(url.searchParams.get("idempotencyKey")!);
@@ -31,7 +33,7 @@ test("B1 immutable styles apply to document revisions and remain frozen across u
       const input = await request.json() as any;
       submissions.push(input);
       if (!workerJobs.has(input.idempotencyKey)) workerJobs.set(input.idempotencyKey, { id: randomUUID(), input, bodyHash: createHash("sha256").update(input.body).digest("hex"), status: "succeeded", step: "done",
-        result: { articleStyleHash: input.articleStyle?.hash, articleThemeHash: "a".repeat(64), publishResults: [{ account: input.account, status: "success", external_id: "SIMULATED_STYLE_DRAFT", article_theme_hash: "a".repeat(64) }] } });
+        result: { articleStyleHash: input.articleStyle?.hash, articleThemeHash: "a".repeat(64), ...(input.coverSnapshot ? coverSnapshotIdentity(input.coverSnapshot) : {}), publishResults: [{ account: input.account, status: "success", external_id: "SIMULATED_STYLE_DRAFT", article_theme_hash: "a".repeat(64) }] } });
       if (loseResponse) { loseResponse = false; return new Response("accepted but response lost", { status: 502 }); }
       return Response.json(workerJobs.get(input.idempotencyKey));
     }

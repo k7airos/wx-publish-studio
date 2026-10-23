@@ -34,7 +34,8 @@ export async function documentCover(sql: Database, config: AppConfig, owner: str
 }
 
 export async function documentCoverSnapshot(sql: Database, config: AppConfig, owner: string, doc: any, createdAssetIds?: string[]): Promise<CoverSnapshot | null> {
-  if (!doc.cover_template_id) return owner === OWNER_ID ? null : neutralCoverSnapshot();
+  // 未选封面时一律随任务带上公共封面，Worker 自带的默认封面依赖部署方未配置的受信 CDN。
+  if (!doc.cover_template_id) return neutralCoverSnapshot();
   return new CoverStore(sql, config).snapshot(owner, doc.cover_template_id, doc.cover_template_revision, doc.title, { transaction: true, createdAssetIds });
 }
 

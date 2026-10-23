@@ -1,3 +1,5 @@
+import { coverSnapshotIdentity } from "@akairos/pipeline/cover-snapshot";
+import { ARTICLE_COVER_FONT } from "@akairos/typeset-studio/cover";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash, randomUUID } from "node:crypto";
 import { SQL } from "bun";
@@ -48,7 +50,7 @@ beforeAll(async () => {
   worker = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(request) {
     if (request.headers.get("Authorization") !== `Bearer ${workerToken}`) return new Response("Unauthorized", { status: 401 });
     const url = new URL(request.url); const path = url.pathname;
-    if (path === "/health") return Response.json({ capabilities: { jobLookupByIdempotencyKey: true } });
+    if (path === "/health") return Response.json({ capabilities: { articleStyleSchemaVersions: [1], coverSnapshotSchemaVersions: [1], articleCoverFonts: [ARTICLE_COVER_FONT], jobLookupByIdempotencyKey: true } });
     if (path.startsWith("/v1/accounts/") && request.method === "PUT") {
       const credentials = await request.json();
       registrations.push(credentials);
@@ -69,7 +71,7 @@ beforeAll(async () => {
           id: randomUUID(), status: nextStatus, step: nextStatus === "succeeded" ? "done" : nextStatus,
           statePath: "/private/worker/secret/workflow-state.json", error: `raw error contains ${pat}`,
           input: { ...input, title: input.title.trim(), pat, appSecret }, bodyHash: createHash("sha256").update(input.body).digest("hex"),
-          result: { publishResults: includeDraft ? [{ account: input.account, status: "success", external_id: "SIMULATED_DRAFT_ID" }] : [] },
+          result: { ...(nextStatus === "succeeded" && input.articleStyle ? { articleStyleHash: input.articleStyle.hash, articleThemeHash: "a".repeat(64) } : {}), ...(nextStatus === "succeeded" && input.coverSnapshot ? coverSnapshotIdentity(input.coverSnapshot) : {}), publishResults: includeDraft ? [{ account: input.account, status: "success", external_id: "SIMULATED_DRAFT_ID", ...(input.articleStyle ? { article_theme_hash: "a".repeat(64) } : {}) }] : [] },
         };
         workerJobs.set(input.idempotencyKey, job);
       }

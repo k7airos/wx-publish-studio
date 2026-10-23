@@ -1,3 +1,4 @@
+import { ARTICLE_COVER_FONT } from "@akairos/typeset-studio/cover";
 import { expect, test } from "bun:test";
 import { createHash, randomUUID } from "node:crypto";
 import { SQL } from "bun";
@@ -21,7 +22,7 @@ test("2B AppID reservation, historical read-only handoff, unknown lookup and con
   let confirmEntered: (() => void) | undefined; let continueConfirm: Promise<void> | undefined;
   const worker = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(request) {
     const url = new URL(request.url); const path = url.pathname;
-    if (path === "/health") return Response.json({ capabilities: { jobLookupByIdempotencyKey: true, articleSnapshotSchemaVersions: [1], previewConfirm: true, bodyAssetUpload: true } });
+    if (path === "/health") return Response.json({ capabilities: { articleStyleSchemaVersions: [1], coverSnapshotSchemaVersions: [1], articleCoverFonts: [ARTICLE_COVER_FONT], jobLookupByIdempotencyKey: true, articleSnapshotSchemaVersions: [1], previewConfirm: true, bodyAssetUpload: true } });
     if (path.startsWith("/v1/accounts/")) { writes++; return Response.json({ active: true }); }
     if (path === "/v1/jobs/by-idempotency-key") {
       const job = jobs.get(url.searchParams.get("idempotencyKey")!);
