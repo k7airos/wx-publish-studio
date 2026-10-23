@@ -24,7 +24,7 @@
 
    两种方式完成后 `docker compose ps` 都应显示四个服务都是 `healthy`。
 
-   > 镜像引用必须是**完整 registry 路径**（`ghcr.io/k7airos/…`）。裸名字（例如 `wx-publish-studio:0.7.1`）会被 Docker 当成 Docker Hub 上的镜像去拉——那等于把部署交给一个可能被他人抢注的命名空间。要固定版本或换自己的 registry 时用 `APP_IMAGE` / `PIPELINE_WORKER_IMAGE` / `RELAY_IMAGE` 覆盖。
+   > 镜像引用必须是**完整 registry 路径**（`ghcr.io/k7airos/…`）。裸名字（例如 `wx-publish-studio:0.7.2`）会被 Docker 当成 Docker Hub 上的镜像去拉——那等于把部署交给一个可能被他人抢注的命名空间。要固定版本或换自己的 registry 时用 `APP_IMAGE` / `PIPELINE_WORKER_IMAGE` / `RELAY_IMAGE` 覆盖。
 5. 初始化同栈中转：模式 A 下中转刚起来时还没有管理员，`bash scripts/relay-init.sh` 会创建管理员、生成带 `wx` scope 的 PAT 并写回 `.env` 的 `PUBLISHING_RELAY_PAT`，随后再跑一次 `docker compose up -d --wait` 让应用加载令牌。模式 B 下这一步跳过，在界面里填你自己中转的 PAT。脚本可以重复执行：`.env` 里已有的令牌若仍然有效就直接沿用；确实要换新令牌时，此前由脚本生成的同名旧令牌会被吊销。
 6. 打开配置的 origin，按所选模式使用访问口令。修改本机端口时同步 `.env` 的 `APP_PORT` 与 `APP_ORIGIN`。
 
