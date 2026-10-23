@@ -9,12 +9,12 @@ import type { AppConfig } from "../config";
 import { createArticleSnapshot, validateArticleSnapshot, type ArticleSnapshot } from "@akairos/pipeline/article-snapshot";
 import { DocumentImages } from "./document-images";
 import { BodyAssetStore, PreviewError } from "./body-asset-store";
-import { OWNER_ID } from "../db/schema";
 import { neutralArticleStyle, neutralCoverSnapshot } from "./neutral-defaults";
 
 // 文档只引用固定样式修订；建立任务时复制内容，恢复不再读取实时样式资产。
 export async function documentArticleStyle(sql: Database, owner: string, doc: any): Promise<ArticleStyleSnapshot | null> {
-  if (!doc.style_id) return owner === OWNER_ID ? null : neutralArticleStyle;
+  // 未选样式时一律用公共中性样式，避免落到上游默认主题的示例落款。
+  if (!doc.style_id) return neutralArticleStyle;
   return new StyleStore(sql).get(owner, doc.style_id, doc.style_revision);
 }
 
