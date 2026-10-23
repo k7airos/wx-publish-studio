@@ -8,7 +8,7 @@
 - 仓库与镜像名统一为 `wx-publish-studio`。
 - 本项目**不发布 npm 包**；依赖全部走公共 `@akairos/*`。
 - **Docker 镜像公开发布到 GHCR**：`ghcr.io/k7airos/wx-publish-studio`、`wx-pipeline-worker`、`wx-relay`，均为 `linux/amd64` 与 `linux/arm64` 多架构，**公开可匿名拉取**，不需要镜像仓库账号。镜像由打 `v*` tag 触发的工作流构建（见下文「后续发版怎么继续」）。
-- 同时保留**从源码构建**的路径：Worker 与微信中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建（见 README「快速开始」第 3 步方式二），同样不需要镜像仓库账号；compose 在镜像拉不到时会自动退回本地构建。
+- 同时保留**从源码构建**的路径：Worker 与微信中转镜像由 compose 从两个公开仓库的固定提交以 git context 构建（见 README「快速开始」的「方式二」），同样不需要镜像仓库账号；compose 在镜像拉不到时会自动退回本地构建。
 
 ## 干净历史
 
