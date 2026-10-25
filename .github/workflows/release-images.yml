@@ -42,9 +42,9 @@ jobs:
             dockerfile: Dockerfile
           - name: worker
             image: wx-pipeline-worker
-            version: "0.24.0"
+            version: "0.24.1"
             repository: k7airos/zzhub-pipeline
-            ref: "4cf5725f35758fa5fada8786cb57cd9960388c7f"
+            ref: "e54634ff36619cb6646d71903413b6951104b48a"
             context: sources/worker
             dockerfile: services/cloud-worker/Dockerfile
           - name: relay
