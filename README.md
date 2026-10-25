@@ -34,11 +34,17 @@ flowchart LR
 | 服务 | 作用 | 镜像 | 对应项目 |
 | --- | --- | --- | --- |
 | `app` | 编辑器、排版、预览、账号与任务管理 | `ghcr.io/k7airos/wx-publish-studio:0.7.2` | 本仓库；正文编辑器用 [myno](https://github.com/k7airos/myno)，封面用 [typeset-studio](https://github.com/k7airos/typeset-studio) |
-| `worker` | 渲染封面与预览（内含 Chromium），按任务调用微信 | `ghcr.io/k7airos/wx-pipeline-worker:0.24.0` | [zzhub-pipeline](https://github.com/k7airos/zzhub-pipeline) |
+| `worker` | 渲染封面与预览（内含 Chromium），按任务调用微信 | `ghcr.io/k7airos/wx-pipeline-worker:0.24.1` | [zzhub-pipeline](https://github.com/k7airos/zzhub-pipeline) |
 | `relay` | 微信中转：持有账号与令牌，代理微信草稿与素材接口 | `ghcr.io/k7airos/wx-relay:0.2.2` | [bun-wx-server](https://github.com/k7airos/bun-wx-server) |
 | `db` | PostgreSQL 16 | `postgres:16-alpine`（固定 digest） | 官方镜像 |
 
 三个自有镜像都发布在 GHCR，多架构（linux/amd64 与 linux/arm64），公开可拉，不需要镜像仓库账号，也不需要 `docker login`。
+
+### 镜像版本
+
+- **app 镜像**由本仓库的发布流程构建；**worker / relay 镜像**由各自仓库（[zzhub-pipeline](https://github.com/k7airos/zzhub-pipeline)、[bun-wx-server](https://github.com/k7airos/bun-wx-server)）随自己的版本发布，组件发版即时可用，不需要等本仓库发版。
+- compose 默认引用**本栈验证过的组合**，保证开箱即稳；每个镜像同时带精确版本 tag 和 `latest`。
+- 想**始终追新**：在 `.env` 里设 `PIPELINE_WORKER_IMAGE=ghcr.io/k7airos/wx-pipeline-worker:latest`、`RELAY_IMAGE=ghcr.io/k7airos/wx-relay:latest`，之后 `docker compose pull && docker compose up -d --wait` 即可滚动到组件最新版。兼容性方向是安全的：app 对 worker 做 `/health` 能力探测，新 worker 配旧 app 兼容；反方向会明确提示升级。想**锁死版本**：把镜像 tag 固定到精确版本号即可。
 
 ## 快速开始
 
@@ -164,7 +170,7 @@ compose 只检查「有没有填」。填了但不合规的值由应用启动时
 | `PUBLISHING_BODY_IMAGE_OWNER_SOURCES` | 按使用者（owner）单独授权的图片来源，JSON 形式：`{"<owner-uuid>":[{"origin":"https://img.example.com","pathPrefix":"/their/files/"}]}`。用于迁移既有素材 |
 | `APP_PORT` | 宿主端口，默认 `18889`；改了要同步改 `APP_ORIGIN` |
 | `APP_IMAGE` | 覆盖应用镜像引用，默认 `ghcr.io/k7airos/wx-publish-studio:0.7.2`。固定到别的版本或自己的 registry 时填它，必须写完整 registry 路径 |
-| `PIPELINE_WORKER_IMAGE` | 覆盖 Worker 镜像引用，默认 `ghcr.io/k7airos/wx-pipeline-worker:0.24.0` |
+| `PIPELINE_WORKER_IMAGE` | 覆盖 Worker 镜像引用，默认 `ghcr.io/k7airos/wx-pipeline-worker:0.24.1` |
 | `RELAY_IMAGE` | 覆盖中转镜像引用，默认 `ghcr.io/k7airos/wx-relay:0.2.2` |
 | `RELAY_ADMIN_USERNAME` / `RELAY_ADMIN_PASSWORD` | 同栈中转的管理员账号，供 `scripts/relay-init.sh` 使用，脚本自己读写 `.env`；没有口令时会随机生成，请自行妥善保管 |
 
@@ -249,7 +255,7 @@ docker compose up -d --build --wait
 | 构建时卡在拉公开仓库 / `could not read from remote repository` | Worker 与中转镜像从 GitHub 公开仓库以 git context 构建，检查网络、代理与 DNS。 |
 | 一直卡在 `waiting for ... to be healthy` | 看 `docker compose logs worker`、`docker compose logs relay` 的具体报错。 |
 | Worker 起不来 / 一直不健康 | `docker compose logs worker`：先看是不是连不上 `ZZHUB_WX_BASE_URL`，再看中转是否已启动。 |
-| Worker 镜像拉不到 | 默认是公开镜像 `ghcr.io/k7airos/wx-pipeline-worker:0.24.0`，拉不动多半是网络问题。也可以用 `PIPELINE_WORKER_IMAGE` 指向自己构建的镜像，或改走源码构建。 |
+| Worker 镜像拉不到 | 默认是公开镜像 `ghcr.io/k7airos/wx-pipeline-worker:0.24.1`，拉不动多半是网络问题。也可以用 `PIPELINE_WORKER_IMAGE` 指向自己构建的镜像，或改走源码构建。 |
 | 中转起不来 / 一直不健康 | `docker compose logs relay`：模式 A 下先确认 `.env` 里有 `RELAY_JWT_SECRET`。 |
 | `scripts/relay-init.sh` 报 `中转容器没有在运行` | 先执行 `docker compose up -d --wait`。 |
 | `scripts/relay-init.sh` 报 `登录中转失败` | `.env` 的 `RELAY_ADMIN_PASSWORD` 与中转里已有管理员的口令不一致（改过口令会这样）。清掉 `relay-data` 卷重新初始化，或改回原口令。 |

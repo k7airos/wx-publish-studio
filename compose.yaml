@@ -51,11 +51,11 @@ services:
       timeout: 5s
       retries: 6
   worker:
-    # Worker 镜像由 compose 直接从公开仓库的固定提交构建，不需要任何镜像仓库账号。
-    # 已自建镜像时把 PIPELINE_WORKER_IMAGE 指向它，并用不带 --build 的启动命令跳过重建。
-    image: ${PIPELINE_WORKER_IMAGE:-ghcr.io/k7airos/wx-pipeline-worker:0.24.0}
+    # Worker 镜像由 zzhub-pipeline 仓库随自己的版本发布；这里的默认值是本栈验证过的版本。
+    # 想始终追新把 PIPELINE_WORKER_IMAGE 指到 :latest；源码构建回退固定在默认版本对应的提交。
+    image: ${PIPELINE_WORKER_IMAGE:-ghcr.io/k7airos/wx-pipeline-worker:0.24.1}
     build:
-      context: https://github.com/k7airos/zzhub-pipeline.git#4cf5725f35758fa5fada8786cb57cd9960388c7f
+      context: https://github.com/k7airos/zzhub-pipeline.git#e54634ff36619cb6646d71903413b6951104b48a
       dockerfile: services/cloud-worker/Dockerfile
     restart: unless-stopped
     environment:
@@ -75,7 +75,8 @@ services:
       timeout: 5s
       retries: 6
   relay:
-    # 微信中转：同栈自带（模式 A）或使用外部中转（模式 B）。镜像同样由 compose 从公开仓库的固定提交构建。
+    # 微信中转：同栈自带（模式 A）或使用外部中转（模式 B）。
+    # 镜像由 bun-wx-server 仓库随自己的版本发布；默认值是本栈验证过的版本，追新可把 RELAY_IMAGE 指到 :latest。
     image: ${RELAY_IMAGE:-ghcr.io/k7airos/wx-relay:0.2.2}
     build:
       context: https://github.com/k7airos/bun-wx-server.git#3a9864cbb8971ca676259d05f5f937d1f2e842bc
